@@ -187,7 +187,20 @@ process_wind_data() {
 
 void
 process_rain_data() {
+	check_packet_len(22);
 
+	float rain_rate		= (256 * packet[8]  +  packet[7]) * 25.4;
+	float rain_hour		= (256 * packet[10] +  packet[9]) * 25.4;
+	float rain_24h		= (256 * packet[12] + packet[11]) * 25.4;
+	float rain_accum 	= (256 * packet[14] + packet[13]) * 25.4;
+
+
+	// rain rate, rain last hour, rain last 24 hours (excl. last hour)
+	// and accumulated rain since 2007-01-01 12:00
+	printf("rain.rate: %.2f\n", rain_rate);
+	printf("rain.hour: %.2f\n", rain_hour);
+	printf("rain.24h: %.2f\n", rain_24h);
+	printf("rain.accum: %.2f\n", rain_accum);
 }
 
 
@@ -204,7 +217,7 @@ void
 process_baro_data() {
 	check_packet_len(13);
 
-	uint pressure		= 256 * LOW(packet[8]) + packet[7];
+	uint pressure		= 256 * LOW(packet[8])  + packet[7];
 	uint alt_pressure	= 256 * LOW(packet[10]) + packet[9];
 	uint forecast_flag	= HIGH(packet[8]);
 
