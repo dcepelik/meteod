@@ -28,17 +28,20 @@
 #define SIGN_POSITIVE		0x0
 #define SIGN_NEGATIVE		0x8
 
-const char *LEVEL_FLAGS[] = { "ok", "low" };
-const char *SENSOR_FLAGS[] = { "ok", "failed" };
+const char *LEVEL[] = { "ok", "low" };
+const char *STATUS[] = { "ok", "failed" };
 
-const char *FORECAST_FLAGS[] = {
-	"partly_cloudy-day",
-	"rainy",
-	"cloudy",
-	"sunny",
-	"clear",
-	"snowy",
+const char *FORECAST[] = {
+	"partly_cloudy-day", "rainy", "cloudy",
+	"sunny", "clear", "snowy",
 	"partly_cloudy-night"
+};
+
+const char *WIND_DIRECTION[] = {
+	"N", "NNE", "NE", "ENE",
+	"E", "ESE", "SE", "SSE",
+	"S", "SSW", "SW", "WSW",
+	"W", "WNW", "NW", "NNW"
 };
 
 
@@ -181,7 +184,19 @@ process_historic_data() {
 
 void
 process_wind_data() {
+	check_packet_len(16);
 
+	uint wind_dir_flag	= LOW(packet[7]);
+	float wind_gust_speed	= (256 * LOW(packet[10]) +      packet[9])   / 10;
+	float wind_avg_speed	= (256 * LOW(packet[11]) + HIGH(packet[10])) / 10;
+	float wind_chill	= (packet[12] - 32) / 1.8;
+
+
+	// wind direction, wind gust speed, wind average speed and wind chill
+	printf("wind.dir: %s\n", WIND_DIRECTION[wind_dir_flag]);
+	printf("wind.gust_speed: %.2f\n", wind_gust_speed);
+	printf("wind.avg_speed: %.2f\n", wind_avg_speed);
+	printf("wind.chill: %.1f\n", wind_chill);
 }
 
 
@@ -208,7 +223,7 @@ void
 process_uvi_data() {
 	check_packet_len(10);
 
-	uint index = LOW(byte[7]);
+	uint index = LOW(packet[7]);
 	printf("uvi.index: %u\n", index);
 }
 
@@ -225,7 +240,7 @@ process_baro_data() {
 	// pressure, altitude pressure and forecast flag
 	printf("baro.pressure: %u\n", pressure);
 	printf("baro.alt_pressure: %u\n", alt_pressure);
-	printf("baro.forecast: %s\n", FORECAST_FLAGS[forecast_flag]);
+	printf("baro.forecast: %s\n", FORECAST[forecast_flag]);
 }
 
 
@@ -280,19 +295,19 @@ process_status_data() {
 
 
 	// batteries
-	printf("status.wind.bat: %s\n", LEVEL_FLAGS[wind_bat_flag]);
-	printf("status.temp_hum.bat: %s\n", LEVEL_FLAGS[temp_hum_bat_flag]);
-	printf("status.rain.bat: %s\n", LEVEL_FLAGS[rain_bat_flag]);
-	printf("status.uv.bat: %s\n", LEVEL_FLAGS[uv_bat_flag]);
+	printf("status.wind.bat: %s\n", LEVEL[wind_bat_flag]);
+	printf("status.temp_hum.bat: %s\n", LEVEL[temp_hum_bat_flag]);
+	printf("status.rain.bat: %s\n", LEVEL[rain_bat_flag]);
+	printf("status.uv.bat: %s\n", LEVEL[uv_bat_flag]);
 
 	// sensor states
-	printf("status.wind.sensor: %s\n", SENSOR_FLAGS[wind_sensor_flag]);
-	printf("status.temp_hum.sensor: %s\n", SENSOR_FLAGS[temp_hum_sensor_flag]);
-	printf("status.rain.sensor: %s\n", SENSOR_FLAGS[rain_sensor_flag]);
-	printf("status.uv.sensor: %s\n", SENSOR_FLAGS[uv_sensor_flag]);
+	printf("status.wind.sensor: %s\n", STATUS[wind_sensor_flag]);
+	printf("status.temp_hum.sensor: %s\n", STATUS[temp_hum_sensor_flag]);
+	printf("status.rain.sensor: %s\n", STATUS[rain_sensor_flag]);
+	printf("status.uv.sensor: %s\n", STATUS[uv_sensor_flag]);
 
 	// real-time clock signal strength
-	printf("status.rtc.signal: %s\n", LEVEL_FLAGS[rtc_signal_flag]);
+	printf("status.rtc.signal: %s\n", LEVEL[rtc_signal_flag]);
 }
 
 
