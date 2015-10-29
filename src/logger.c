@@ -5,6 +5,7 @@
  *  Copyright (c) 2015 David Čepelík <cepelik@gymlit.cz>
  *
  *  This program may be licensed under GNU GPL version 2 or 3.
+ *  See the LICENSE file for more information.
  */
 
 
@@ -93,7 +94,6 @@ send_cmd_frame(uchar cmd) {
 		exit(1);
 	}
 }
-
 
 
 void set_heartbeat_timer();
