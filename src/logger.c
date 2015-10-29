@@ -283,8 +283,7 @@ act_on_packet_type:
 			continue;
 
 		case COMMUNICATION_STOP:
-			fprintf(stderr, "read_packet: remote end terminated communication cleanly\n");
-			exit(1);
+			// ignore, sent as response to prev COMMUNICATION_STOP request
 			break;
 		}
 
