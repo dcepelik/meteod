@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <unistd.h>
 
 #include <hidapi.h>
 
@@ -23,7 +24,8 @@
 #define COMMUNICATION_STOP	0xDF
 
 
-#define FRAME_SIZE		8
+#define FRAME_SIZE		8	// Bytes
+#define HEARTBEAT_PERIOD	30	// seconds
 
 
 typedef unsigned int		uint;
@@ -42,7 +44,6 @@ uchar packet_type;
 uint packet_len;
 
 
-
 void
 send_cmd_frame(uchar cmd) {
 	uchar data[FRAME_SIZE] = { 0x01, cmd };
@@ -56,32 +57,38 @@ send_cmd_frame(uchar cmd) {
 
 
 
+
+void set_heartbeat_timer();
+
+
 void
-connect() {
-	dev = hid_open(WMR200_VID, WMR200_PID, NULL);
+hearbeat(int sig_num) {
+	printf("Heartbeat\n");
+	send_cmd_frame(HEARTBEAT);
 
-	if (dev == NULL) {
-		fprintf(stderr, "hid_open: cannot connect to WRM200\n");
-		exit(1);
-	}
-
-	buf_avail = 0;
+	set_heartbeat_timer();
 }
 
 
 
 void
-disconnect() {
-	if (dev != NULL) {
-		send_cmd_frame(COMMUNICATION_STOP);
-		hid_close(dev);
-	}
+set_heartbeat_timer() {
+	signal(SIGALRM, hearbeat);
+	alarm(HEARTBEAT_PERIOD);
+}
+
+
+
+void
+cancel_heartbeat_timer() {
+	alarm(0);
 }
 
 
 
 uchar
 read_byte() {
+	printf("Reading byte\n");
 	if (buf_avail == 0) {
 		int ret = hid_read(dev, buf, FRAME_SIZE);
 
@@ -96,6 +103,52 @@ read_byte() {
 
 	buf_avail--;
 	return buf[buf_pos++];
+}
+
+
+
+void
+connect() {
+	dev = hid_open(WMR200_VID, WMR200_PID, NULL);
+
+	if (dev == NULL) {
+		fprintf(stderr, "hid_open: cannot connect to WRM200\n");
+		exit(1);
+	}
+
+	// abracadabra
+	uchar init[8] = { 0x20, 0x00, 0x08, 0x01, 0x00, 0x00, 0x00, 0x00 };
+	if (hid_write(dev, init, 8) != 8) {
+		fprintf(stderr, "Cannot initialize communication with WMR200\n");
+		exit(1);
+	}
+
+	// todo
+	uchar start[8] = { 0x01, 0xD0, 0x08, 0x01, 0x00, 0x00, 0x00, 0x00 };
+	if (hid_write(dev, start, 8) != 8) {
+		fprintf(stderr, "Cannot initialize communication with WMR200\n");
+		exit(1);
+	}
+
+	send_cmd_frame(HEARTBEAT);
+
+	buf_avail = 0;
+}
+
+
+
+void
+disconnect() {
+	cancel_heartbeat_timer();
+
+	if (dev != NULL) {
+		do {
+			send_cmd_frame(COMMUNICATION_STOP);
+		} while (read_byte() != COMMUNICATION_STOP);
+
+		printf("Communication closed cleanly.");
+		hid_close(dev);
+	}
 }
 
 
@@ -153,7 +206,7 @@ process_baro_data() {
 
 void
 process_temp_humid_data() {
-
+	
 }
 
 
@@ -166,8 +219,8 @@ process_status_data() {
 	flags[0] = "ok";
 	flags[1] = "low";
 
-	printf("status\trtc\tsignal:%s", flags[packet_data[4] & 128]);
-	printf("status\twind\tsignal:%s", flags[packet_data[2] & 1]);
+	printf("status\trtc\tsignal:%s\n", flags[packet_data[4] & 128]);
+	printf("status\twind\tsignal:%s\n", flags[packet_data[2] & 1]);
 }
 
 
@@ -242,6 +295,7 @@ act_on_packet_type:
 			goto act_on_packet_type;
 		}
 
+
 		packet_data = malloc(packet_len);
 		if (packet_data == NULL) {
 			fprintf(stderr, "Cannot malloc %u bytes of memory\n", packet_len);
@@ -266,15 +320,10 @@ act_on_packet_type:
 
 		dispatch_packet();
 		free(packet_data);
+
+		printf("Processed %02x packet, %i bytes.\n", packet_type, packet_len);
 	}
 }	
-
-
-
-void
-main_loop() {
-
-}
 
 
 
@@ -282,7 +331,7 @@ void
 cleanup(int sig_num) {
 	disconnect();
 
-	printf("Caught signal %i, exiting\n", sig_num);
+	printf("\n\nDied on signal %i\n", sig_num);
 	exit(0);
 }
 
@@ -293,8 +342,11 @@ main(int argc, const char *argv[]) {
 	signal(SIGINT, cleanup);
 	signal(SIGTERM, cleanup);
 
+	//set_heartbeat_timer();
+
 	connect();
-	main_loop();
+	send_cmd_frame(LOGGER_DATA_ERASE);
+	read_packets();
 
 	return (0);
 }
