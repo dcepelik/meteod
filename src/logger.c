@@ -1,7 +1,18 @@
+/**
+ *  logger.c:
+ *  Very simple WMR200 datalogger
+ *
+ *  Copyright (c) 2015 David Čepelík <cepelik@gymlit.cz>
+ *
+ *  This program may be licensed under GNU GPL version 2 or 3.
+ */
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
 #include <unistd.h>
+#include <time.h>
 
 #include <hidapi.h>
 
@@ -28,6 +39,7 @@ typedef unsigned char		uchar;
 
 #define FRAME_SIZE		8	// Bytes
 #define HEARTBEAT_PERIOD	30	// seconds
+#define MAX_EXT_SENSORS		10
 
 #define SIGN_POSITIVE		0x0
 #define SIGN_NEGATIVE		0x8
@@ -35,6 +47,12 @@ typedef unsigned char		uchar;
 #define NTH_BIT(n, val)		(((val) >> (n)) & 1)
 #define HIGH(b)			LOW((b) >> 4)
 #define LOW(b)			((b) &  0xF)
+
+#ifdef  DEBUG
+#define DEBUG_MSG(...)		fprintf(stderr, __VA_ARGS__)
+#else
+#define DEBUG_MSG(...)
+#endif
 
 
 const char *LEVEL[] = { "ok", "low" };
@@ -82,7 +100,7 @@ void set_heartbeat_timer();
 
 void
 hearbeat(int sig_num) {
-	printf("Heartbeat\n");
+	DEBUG_MSG("Sending heartbeat\n");
 	send_cmd_frame(HEARTBEAT);
 
 	set_heartbeat_timer();
@@ -161,8 +179,20 @@ disconnect() {
 }
 
 
-void
-process_historic_data(uchar *data, uint data_len) {
+
+time_t
+parse_packet_time() {
+	struct tm tm = {
+		.tm_year	= (2000 + packet[6]) - 1900,
+		.tm_mon		= packet[5],
+		.tm_mday	= packet[4],
+		.tm_hour	= packet[3],
+		.tm_min		= packet[2],
+		.tm_sec		= 0,
+		.tm_isdst	= -1
+	};
+
+	return mktime(&tm);
 }
 
 
@@ -175,10 +205,10 @@ process_wind_data(uchar *data, uint data_len) {
 
 
 	// wind direction, wind gust speed, wind average speed and wind chill
-	printf("wind.dir: %s\n", WIND_DIRECTION[wind_dir_flag]);
-	printf("wind.gust_speed: %.2f\n", wind_gust_speed);
-	printf("wind.avg_speed: %.2f\n", wind_avg_speed);
-	printf("wind.chill: %.1f\n", wind_chill);
+	printf("\twind.dir: %s\n", WIND_DIRECTION[wind_dir_flag]);
+	printf("\twind.gust_speed: %.2f\n", wind_gust_speed);
+	printf("\twind.avg_speed: %.2f\n", wind_avg_speed);
+	printf("\twind.chill: %.1f\n", wind_chill);
 }
 
 
@@ -192,17 +222,17 @@ process_rain_data(uchar *data, uint data_len) {
 
 	// rain rate, rain last hour, rain last 24 hours (excl. last hour)
 	// and accumulated rain since 2007-01-01 12:00
-	printf("rain.rate: %.2f\n", rain_rate);
-	printf("rain.hour: %.2f\n", rain_hour);
-	printf("rain.24h: %.2f\n", rain_24h);
-	printf("rain.accum: %.2f\n", rain_accum);
+	printf("\train.rate: %.2f\n", rain_rate);
+	printf("\train.hour: %.2f\n", rain_hour);
+	printf("\train.24h: %.2f\n", rain_24h);
+	printf("\train.accum: %.2f\n", rain_accum);
 }
 
 
 void
 process_uvi_data(uchar *data, uint data_len) {
 	uint index = LOW(data[7]);
-	printf("uvi.index: %u\n", index);
+	printf("\tuvi.index: %u\n", index);
 }
 
 
@@ -214,9 +244,9 @@ process_baro_data(uchar *data, uint data_len) {
 
 
 	// pressure, altitude pressure and forecast flag
-	printf("baro.pressure: %u\n", pressure);
-	printf("baro.alt_pressure: %u\n", alt_pressure);
-	printf("baro.forecast: %s\n", FORECAST[forecast_flag]);
+	printf("\tbaro.pressure: %u\n", pressure);
+	printf("\tbaro.alt_pressure: %u\n", alt_pressure);
+	printf("\tbaro.forecast: %s\n", FORECAST[forecast_flag]);
 }
 
 
@@ -244,10 +274,10 @@ process_temp_humid_data(uchar *data, uint data_len) {
 
 
 	// temperature, dew point, humidity and heat index
-	printf("%s.humidity: %u\n", sensor_name, humidity);
-	printf("%s.heat_index: %u\n", sensor_name, heat_index);
-	printf("%s.temp: %.1f\n", sensor_name, temp);
-	printf("%s.dew_point: %.1f\n", sensor_name, dew_point);
+	printf("\t%s.humidity: %u\n", sensor_name, humidity);
+	printf("\t%s.heat_index: %u\n", sensor_name, heat_index);
+	printf("\t%s.temp: %.1f\n", sensor_name, temp);
+	printf("\t%s.dew_point: %.1f\n", sensor_name, dew_point);
 }
 
 
@@ -267,19 +297,39 @@ process_status_data(uchar *data, uint data_len) {
 
 
 	// batteries
-	printf("status.wind.bat: %s\n", LEVEL[wind_bat_flag]);
-	printf("status.temp_hum.bat: %s\n", LEVEL[temp_hum_bat_flag]);
-	printf("status.rain.bat: %s\n", LEVEL[rain_bat_flag]);
-	printf("status.uv.bat: %s\n", LEVEL[uv_bat_flag]);
+	printf("\tstatus.wind.bat: %s\n", LEVEL[wind_bat_flag]);
+	printf("\tstatus.temp_hum.bat: %s\n", LEVEL[temp_hum_bat_flag]);
+	printf("\tstatus.rain.bat: %s\n", LEVEL[rain_bat_flag]);
+	printf("\tstatus.uv.bat: %s\n", LEVEL[uv_bat_flag]);
 
 	// sensor states
-	printf("status.wind.sensor: %s\n", STATUS[wind_sensor_flag]);
-	printf("status.temp_hum.sensor: %s\n", STATUS[temp_hum_sensor_flag]);
-	printf("status.rain.sensor: %s\n", STATUS[rain_sensor_flag]);
-	printf("status.uv.sensor: %s\n", STATUS[uv_sensor_flag]);
+	printf("\tstatus.wind.sensor: %s\n", STATUS[wind_sensor_flag]);
+	printf("\tstatus.temp_hum.sensor: %s\n", STATUS[temp_hum_sensor_flag]);
+	printf("\tstatus.rain.sensor: %s\n", STATUS[rain_sensor_flag]);
+	printf("\tstatus.uv.sensor: %s\n", STATUS[uv_sensor_flag]);
 
 	// real-time clock signal strength
-	printf("status.rtc.signal: %s\n", LEVEL[rtc_signal_flag]);
+	printf("\tstatus.rtc.signal: %s\n", LEVEL[rtc_signal_flag]);
+}
+
+
+void
+process_historic_data(uchar *data, uint data_len) {
+	process_rain_data(data, 0);
+	process_wind_data(data + 13, 0);
+	process_uvi_data(data + 20, 0);
+	process_baro_data(data + 21, 0);
+	process_temp_humid_data(data + 26, 0);
+
+	uint ext_sensor_count = data[32];
+	if (ext_sensor_count > MAX_EXT_SENSORS) {
+		fprintf(stderr, "Too many external sensors\n");
+		exit(1);
+	}
+
+	for (uint i = 0; i < ext_sensor_count; i++) {
+		process_temp_humid_data(data + 33 + (7 * i), 0);
+	}
 }
 
 
@@ -321,25 +371,26 @@ void dispatch_packet() {
 }
 
 
-void read_packets() {
+void main_loop() {
 	while (1) {
 		packet_type = read_byte();
 
 act_on_packet_type:
 		switch (packet_type) {
 		case HISTORIC_DATA_NOTIF:
-			printf("Data logger contains some unprocessed historic records\n");
-			printf("Issuing REQUEST_HISTORIC_DATA command\n");
+			DEBUG_MSG("Data logger contains some unprocessed historic records\n");
+			DEBUG_MSG("Issuing REQUEST_HISTORIC_DATA command\n");
 
 			send_cmd_frame(REQUEST_HISTORIC_DATA);
 			continue;
 
 		case LOGGER_DATA_ERASE:
-			printf("Data logger database purge successful\n");
+			DEBUG_MSG("Data logger database purge successful\n");
 			continue;
 
 		case COMMUNICATION_STOP:
 			// ignore, sent as response to prev COMMUNICATION_STOP request
+			DEBUG_MSG("Ignoring COMMUNICATION_STOP packet\n");
 			break;
 		}
 
@@ -372,8 +423,14 @@ act_on_packet_type:
 			continue;
 		}
 
+		printf("# packet 0x%02X (%u bytes)\n", packet_type, packet_len);
+		printf("%li {\n", (long)parse_packet_time());
 		dispatch_packet();
+		printf("}\n\n");
+
 		free(packet);
+
+		DEBUG_MSG("Processed %02x packet (%u bytes)\n", packet_type, packet_len);
 	}
 }	
 
@@ -395,8 +452,8 @@ main(int argc, const char *argv[]) {
 	set_heartbeat_timer();
 
 	connect();
-	send_cmd_frame(LOGGER_DATA_ERASE);
-	read_packets();
+	//send_cmd_frame(LOGGER_DATA_ERASE);
+	main_loop();
 
 	return (0);
 }
