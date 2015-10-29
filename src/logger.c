@@ -25,7 +25,7 @@
 #define FRAME_SIZE		8	// Bytes
 #define HEARTBEAT_PERIOD	30	// seconds
 
-#define SIGN_POSITIV		0x0
+#define SIGN_POSITIVE		0x0
 #define SIGN_NEGATIVE		0x8
 
 const char *LEVEL_FLAGS[] = { "ok", "low" };
@@ -193,7 +193,10 @@ process_rain_data() {
 
 void
 process_uvi_data() {
+	check_packet_len(10);
 
+	uint index = LOW(byte[7]);
+	printf("uvi.index: %u\n", index);
 }
 
 
