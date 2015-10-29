@@ -9,7 +9,6 @@
 #define WMR200_VID		0x0FDE
 #define WMR200_PID		0xCA01
 
-
 #define HEARTBEAT		0xD0
 #define HISTORIC_DATA_NOTIF	0xD1
 #define HISTORIC_DATA		0xD2
@@ -23,14 +22,12 @@
 #define LOGGER_DATA_ERASE	0xDB
 #define COMMUNICATION_STOP	0xDF
 
-
 #define FRAME_SIZE		8	// Bytes
 #define HEARTBEAT_PERIOD	30	// seconds
 
 
 typedef unsigned int		uint;
 typedef unsigned char		uchar;
-
 
 
 hid_device *dev;
@@ -57,9 +54,7 @@ send_cmd_frame(uchar cmd) {
 
 
 
-
 void set_heartbeat_timer();
-
 
 void
 hearbeat(int sig_num) {
@@ -70,7 +65,6 @@ hearbeat(int sig_num) {
 }
 
 
-
 void
 set_heartbeat_timer() {
 	signal(SIGALRM, hearbeat);
@@ -78,12 +72,10 @@ set_heartbeat_timer() {
 }
 
 
-
 void
 cancel_heartbeat_timer() {
 	alarm(0);
 }
-
 
 
 uchar
@@ -103,7 +95,6 @@ read_byte() {
 	buf_avail--;
 	return buf[buf_pos++];
 }
-
 
 
 void
@@ -135,7 +126,6 @@ connect() {
 }
 
 
-
 void
 disconnect() {
 	cancel_heartbeat_timer();
@@ -145,7 +135,6 @@ disconnect() {
 		hid_exit();
 	}
 }
-
 
 
 void
@@ -163,12 +152,10 @@ check_packet_len(uint exp_len) {
 }
 
 
-
 void
 process_historic_data() {
 
 }
-
 
 
 void
@@ -177,12 +164,10 @@ process_wind_data() {
 }
 
 
-
 void
 process_rain_data() {
 
 }
-
 
 
 void
@@ -191,19 +176,16 @@ process_uvi_data() {
 }
 
 
-
 void
 process_baro_data() {
 
 }
 
 
-
 void
 process_temp_humid_data() {
 	
 }
-
 
 
 void
@@ -219,7 +201,6 @@ process_status_data() {
 }
 
 
-
 uint
 calc_packet_checksum() {
 	uint sum = 0;
@@ -229,7 +210,6 @@ calc_packet_checksum() {
 
 	return sum;
 }
-
 
 
 void dispatch_packet() {
@@ -257,7 +237,6 @@ void dispatch_packet() {
 		break;
 	}
 }
-
 
 
 void read_packets() {
@@ -289,7 +268,6 @@ act_on_packet_type:
 			goto act_on_packet_type;
 		}
 
-
 		packet_data = malloc(packet_len);
 		if (packet_data == NULL) {
 			fprintf(stderr, "Cannot malloc %u bytes of memory\n", packet_len);
@@ -320,7 +298,6 @@ act_on_packet_type:
 }	
 
 
-
 void
 cleanup(int sig_num) {
 	disconnect();
@@ -328,7 +305,6 @@ cleanup(int sig_num) {
 	printf("\n\nDied on signal %i\n", sig_num);
 	exit(0);
 }
-
 
 
 int
