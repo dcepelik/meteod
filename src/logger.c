@@ -25,9 +25,31 @@
 #define FRAME_SIZE		8	// Bytes
 #define HEARTBEAT_PERIOD	30	// seconds
 
+#define SIGN_POSITIV		0x0
+#define SIGN_NEGATIVE		0x8
+
+const char *LEVEL_FLAGS[] = { "ok", "low" };
+const char *SENSOR_FLAGS[] = { "ok", "failed" };
+
+const char *FORECAST_FLAGS[] = {
+	"partly_cloudy-day",
+	"rainy",
+	"cloudy",
+	"sunny",
+	"clear",
+	"snowy",
+	"partly_cloudy-night"
+};
+
+
+#define NTH_BIT(n, val)		(((val) >> (n)) & 1)
+#define HIGH(b)			LOW((b) >> 4)
+#define LOW(b)			((b) &  0xF)
+
 
 typedef unsigned int		uint;
 typedef unsigned char		uchar;
+
 
 
 hid_device *dev;
@@ -36,7 +58,7 @@ uchar buf[FRAME_SIZE];
 uint buf_avail;
 uint buf_pos;
 
-uchar *packet_data;
+uchar *packet;
 uchar packet_type;
 uint packet_len;
 
@@ -154,7 +176,6 @@ check_packet_len(uint exp_len) {
 
 void
 process_historic_data() {
-
 }
 
 
@@ -178,13 +199,50 @@ process_uvi_data() {
 
 void
 process_baro_data() {
+	check_packet_len(13);
 
+	uint pressure		= 256 * LOW(packet[8]) + packet[7];
+	uint alt_pressure	= 256 * LOW(packet[10]) + packet[9];
+	uint forecast_flag	= HIGH(packet[8]);
+
+
+	// pressure, altitude pressure and forecast flag
+	printf("baro.pressure: %u\n", pressure);
+	printf("baro.alt_pressure: %u\n", alt_pressure);
+	printf("baro.forecast: %s\n", FORECAST_FLAGS[forecast_flag]);
 }
 
 
 void
 process_temp_humid_data() {
-	
+	check_packet_len(16);
+
+	int sensor_id = packet[7] & 0xF;
+
+	// TODO
+	if (sensor_id > 1) {
+		fprintf(stderr, "Unknown sensor, ID: %i\n", sensor_id);
+		exit(1);
+	}
+
+	char *sensor_name = (sensor_id == 1) ? "temp_hum_1" : "indoor";
+
+
+	uint humidity   = packet[10];
+	uint heat_index = packet[13];
+
+	float temp = (256 * LOW(packet[9]) + packet[8]) / 10.0;
+	if (HIGH(packet[9]) == SIGN_NEGATIVE) temp = -temp;
+
+	float dew_point = (256 * LOW(packet[12]) + packet[11]) / 10.0;
+	if (HIGH(packet[12]) == SIGN_NEGATIVE) dew_point = -dew_point;
+
+
+	// temperature, dew point, humidity and heat index
+	printf("%s.humidity: %u\n", sensor_name, humidity);
+	printf("%s.heat_index: %u\n", sensor_name, heat_index);
+	printf("%s.temp: %.1f\n", sensor_name, temp);
+	printf("%s.dew_point: %.1f\n", sensor_name, dew_point);
 }
 
 
@@ -192,12 +250,33 @@ void
 process_status_data() {
 	check_packet_len(8);
 
-	char *flags[2];
-	flags[0] = "ok";
-	flags[1] = "low";
+	uint wind_bat_flag		= NTH_BIT(0, packet[4]);
+	uint temp_hum_bat_flag		= NTH_BIT(1, packet[4]);
+	uint rain_bat_flag		= NTH_BIT(4, packet[5]);
+	uint uv_bat_flag		= NTH_BIT(5, packet[5]);
 
-	printf("status\trtc\tsignal:%s\n", flags[packet_data[4] & 128]);
-	printf("status\twind\tsignal:%s\n", flags[packet_data[2] & 1]);
+	uint wind_sensor_flag 		= NTH_BIT(0, packet[2]);
+	uint temp_hum_sensor_flag	= NTH_BIT(1, packet[2]);
+	uint rain_sensor_flag		= NTH_BIT(4, packet[3]);
+	uint uv_sensor_flag		= NTH_BIT(5, packet[3]);
+
+	uint rtc_signal_flag		= NTH_BIT(8, packet[4]);
+
+
+	// batteries
+	printf("status.wind.bat: %s\n", LEVEL_FLAGS[wind_bat_flag]);
+	printf("status.temp_hum.bat: %s\n", LEVEL_FLAGS[temp_hum_bat_flag]);
+	printf("status.rain.bat: %s\n", LEVEL_FLAGS[rain_bat_flag]);
+	printf("status.uv.bat: %s\n", LEVEL_FLAGS[uv_bat_flag]);
+
+	// sensor states
+	printf("status.wind.sensor: %s\n", SENSOR_FLAGS[wind_sensor_flag]);
+	printf("status.temp_hum.sensor: %s\n", SENSOR_FLAGS[temp_hum_sensor_flag]);
+	printf("status.rain.sensor: %s\n", SENSOR_FLAGS[rain_sensor_flag]);
+	printf("status.uv.sensor: %s\n", SENSOR_FLAGS[uv_sensor_flag]);
+
+	// real-time clock signal strength
+	printf("status.rtc.signal: %s\n", LEVEL_FLAGS[rtc_signal_flag]);
 }
 
 
@@ -205,7 +284,7 @@ uint
 calc_packet_checksum() {
 	uint sum = 0;
 	for (uint i = 0; i < packet_len - 2; i++) {
-		sum += packet_data[i];
+		sum += packet[i];
 	}
 
 	return sum;
@@ -246,7 +325,7 @@ void read_packets() {
 act_on_packet_type:
 		switch (packet_type) {
 		case HISTORIC_DATA_NOTIF:
-			printf("Data logger contains some unprocessed history records\n");
+			printf("Data logger contains some unprocessed historic records\n");
 			printf("Issuing REQUEST_HISTORIC_DATA command\n");
 
 			send_cmd_frame(REQUEST_HISTORIC_DATA);
@@ -268,22 +347,22 @@ act_on_packet_type:
 			goto act_on_packet_type;
 		}
 
-		packet_data = malloc(packet_len);
-		if (packet_data == NULL) {
+		packet = malloc(packet_len);
+		if (packet == NULL) {
 			fprintf(stderr, "Cannot malloc %u bytes of memory\n", packet_len);
 			exit(1);
 		}
 
-		packet_data[0] = packet_type;
-		packet_data[1] = packet_len;
+		packet[0] = packet_type;
+		packet[1] = packet_len;
 
 		for (uint i = 2; i < packet_len; i++) {
-			packet_data[i] = read_byte();
+			packet[i] = read_byte();
 		}
 
 		uint recv_checksum
-			= 256 * packet_data[packet_len - 1]
-			+ packet_data[packet_len - 2];
+			= 256 * packet[packet_len - 1]
+			+ packet[packet_len - 2];
 
 		if (recv_checksum != calc_packet_checksum()) {
 			fprintf(stderr, "Incorrect packet checksum, dropping packet\n");
@@ -291,9 +370,7 @@ act_on_packet_type:
 		}
 
 		dispatch_packet();
-		free(packet_data);
-
-		printf("Processed %02x packet, %i bytes.\n", packet_type, packet_len);
+		free(packet);
 	}
 }	
 
