@@ -6,6 +6,10 @@
 #include <hidapi.h>
 
 
+typedef unsigned int		uint;
+typedef unsigned char		uchar;
+
+
 #define WMR200_VID		0x0FDE
 #define WMR200_PID		0xCA01
 
@@ -28,6 +32,11 @@
 #define SIGN_POSITIVE		0x0
 #define SIGN_NEGATIVE		0x8
 
+#define NTH_BIT(n, val)		(((val) >> (n)) & 1)
+#define HIGH(b)			LOW((b) >> 4)
+#define LOW(b)			((b) &  0xF)
+
+
 const char *LEVEL[] = { "ok", "low" };
 const char *STATUS[] = { "ok", "failed" };
 
@@ -43,16 +52,6 @@ const char *WIND_DIRECTION[] = {
 	"S", "SSW", "SW", "WSW",
 	"W", "WNW", "NW", "NNW"
 };
-
-
-#define NTH_BIT(n, val)		(((val) >> (n)) & 1)
-#define HIGH(b)			LOW((b) >> 4)
-#define LOW(b)			((b) &  0xF)
-
-
-typedef unsigned int		uint;
-typedef unsigned char		uchar;
-
 
 
 hid_device *dev;
@@ -163,33 +162,16 @@ disconnect() {
 
 
 void
-check_packet_len(uint exp_len) {
-	if (packet_len != exp_len) {
-		fprintf(
-			stderr,
-			"Packet was %i bytes long, but %i bytes were expected\n",
-			packet_len,
-			exp_len
-		);
-
-		exit(1);
-	}
+process_historic_data(uchar *data, uint data_len) {
 }
 
 
 void
-process_historic_data() {
-}
-
-
-void
-process_wind_data() {
-	check_packet_len(16);
-
-	uint wind_dir_flag	= LOW(packet[7]);
-	float wind_gust_speed	= (256 * LOW(packet[10]) +      packet[9])   / 10;
-	float wind_avg_speed	= (256 * LOW(packet[11]) + HIGH(packet[10])) / 10;
-	float wind_chill	= (packet[12] - 32) / 1.8;
+process_wind_data(uchar *data, uint data_len) {
+	uint wind_dir_flag	= LOW(data[7]);
+	float wind_gust_speed	= (256 * LOW(data[10]) +      data[9])   / 10;
+	float wind_avg_speed	= (256 * LOW(data[11]) + HIGH(data[10])) / 10;
+	float wind_chill	= (data[12] - 32) / 1.8;
 
 
 	// wind direction, wind gust speed, wind average speed and wind chill
@@ -201,13 +183,11 @@ process_wind_data() {
 
 
 void
-process_rain_data() {
-	check_packet_len(22);
-
-	float rain_rate		= (256 * packet[8]  +  packet[7]) * 25.4;
-	float rain_hour		= (256 * packet[10] +  packet[9]) * 25.4;
-	float rain_24h		= (256 * packet[12] + packet[11]) * 25.4;
-	float rain_accum 	= (256 * packet[14] + packet[13]) * 25.4;
+process_rain_data(uchar *data, uint data_len) {
+	float rain_rate		= (256 * data[8]  +  data[7]) * 25.4;
+	float rain_hour		= (256 * data[10] +  data[9]) * 25.4;
+	float rain_24h		= (256 * data[12] + data[11]) * 25.4;
+	float rain_accum 	= (256 * data[14] + data[13]) * 25.4;
 
 
 	// rain rate, rain last hour, rain last 24 hours (excl. last hour)
@@ -220,21 +200,17 @@ process_rain_data() {
 
 
 void
-process_uvi_data() {
-	check_packet_len(10);
-
-	uint index = LOW(packet[7]);
+process_uvi_data(uchar *data, uint data_len) {
+	uint index = LOW(data[7]);
 	printf("uvi.index: %u\n", index);
 }
 
 
 void
-process_baro_data() {
-	check_packet_len(13);
-
-	uint pressure		= 256 * LOW(packet[8])  + packet[7];
-	uint alt_pressure	= 256 * LOW(packet[10]) + packet[9];
-	uint forecast_flag	= HIGH(packet[8]);
+process_baro_data(uchar *data, uint data_len) {
+	uint pressure		= 256 * LOW(data[8])  + data[7];
+	uint alt_pressure	= 256 * LOW(data[10]) + data[9];
+	uint forecast_flag	= HIGH(data[8]);
 
 
 	// pressure, altitude pressure and forecast flag
@@ -245,10 +221,8 @@ process_baro_data() {
 
 
 void
-process_temp_humid_data() {
-	check_packet_len(16);
-
-	int sensor_id = packet[7] & 0xF;
+process_temp_humid_data(uchar *data, uint data_len) {
+	int sensor_id = data[7] & 0xF;
 
 	// TODO
 	if (sensor_id > 1) {
@@ -259,14 +233,14 @@ process_temp_humid_data() {
 	char *sensor_name = (sensor_id == 1) ? "temp_hum_1" : "indoor";
 
 
-	uint humidity   = packet[10];
-	uint heat_index = packet[13];
+	uint humidity   = data[10];
+	uint heat_index = data[13];
 
-	float temp = (256 * LOW(packet[9]) + packet[8]) / 10.0;
-	if (HIGH(packet[9]) == SIGN_NEGATIVE) temp = -temp;
+	float temp = (256 * LOW(data[9]) + data[8]) / 10.0;
+	if (HIGH(data[9]) == SIGN_NEGATIVE) temp = -temp;
 
-	float dew_point = (256 * LOW(packet[12]) + packet[11]) / 10.0;
-	if (HIGH(packet[12]) == SIGN_NEGATIVE) dew_point = -dew_point;
+	float dew_point = (256 * LOW(data[12]) + data[11]) / 10.0;
+	if (HIGH(data[12]) == SIGN_NEGATIVE) dew_point = -dew_point;
 
 
 	// temperature, dew point, humidity and heat index
@@ -278,20 +252,18 @@ process_temp_humid_data() {
 
 
 void
-process_status_data() {
-	check_packet_len(8);
+process_status_data(uchar *data, uint data_len) {
+	uint wind_bat_flag		= NTH_BIT(0, data[4]);
+	uint temp_hum_bat_flag		= NTH_BIT(1, data[4]);
+	uint rain_bat_flag		= NTH_BIT(4, data[5]);
+	uint uv_bat_flag		= NTH_BIT(5, data[5]);
 
-	uint wind_bat_flag		= NTH_BIT(0, packet[4]);
-	uint temp_hum_bat_flag		= NTH_BIT(1, packet[4]);
-	uint rain_bat_flag		= NTH_BIT(4, packet[5]);
-	uint uv_bat_flag		= NTH_BIT(5, packet[5]);
+	uint wind_sensor_flag 		= NTH_BIT(0, data[2]);
+	uint temp_hum_sensor_flag	= NTH_BIT(1, data[2]);
+	uint rain_sensor_flag		= NTH_BIT(4, data[3]);
+	uint uv_sensor_flag		= NTH_BIT(5, data[3]);
 
-	uint wind_sensor_flag 		= NTH_BIT(0, packet[2]);
-	uint temp_hum_sensor_flag	= NTH_BIT(1, packet[2]);
-	uint rain_sensor_flag		= NTH_BIT(4, packet[3]);
-	uint uv_sensor_flag		= NTH_BIT(5, packet[3]);
-
-	uint rtc_signal_flag		= NTH_BIT(8, packet[4]);
+	uint rtc_signal_flag		= NTH_BIT(8, data[4]);
 
 
 	// batteries
@@ -325,25 +297,25 @@ calc_packet_checksum() {
 void dispatch_packet() {
 	switch (packet_type) {
 	case HISTORIC_DATA:
-		process_historic_data();
+		process_historic_data(packet, packet_len);
 		break;
 	case WIND_DATA:
-		process_wind_data();
+		process_wind_data(packet, packet_len);
 		break;
 	case RAIN_DATA:
-		process_rain_data();
+		process_rain_data(packet, packet_len);
 		break;
 	case UVI_DATA:
-		process_uvi_data();
+		process_uvi_data(packet, packet_len);
 		break;
 	case BARO_DATA:
-		process_baro_data();
+		process_baro_data(packet, packet_len);
 		break;
 	case TEMP_HUMID_DATA:
-		process_temp_humid_data();
+		process_temp_humid_data(packet, packet_len);
 		break;
 	case STATUS_DATA:
-		process_status_data();
+		process_status_data(packet, packet_len);
 		break;
 	}
 }
