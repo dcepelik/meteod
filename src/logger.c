@@ -88,7 +88,6 @@ cancel_heartbeat_timer() {
 
 uchar
 read_byte() {
-	printf("Reading byte\n");
 	if (buf_avail == 0) {
 		int ret = hid_read(dev, buf, FRAME_SIZE);
 
@@ -142,12 +141,8 @@ disconnect() {
 	cancel_heartbeat_timer();
 
 	if (dev != NULL) {
-		do {
-			send_cmd_frame(COMMUNICATION_STOP);
-		} while (read_byte() != COMMUNICATION_STOP);
-
-		printf("Communication closed cleanly.");
-		hid_close(dev);
+		send_cmd_frame(COMMUNICATION_STOP);
+		hid_exit();
 	}
 }
 
@@ -341,7 +336,7 @@ main(int argc, const char *argv[]) {
 	signal(SIGINT, cleanup);
 	signal(SIGTERM, cleanup);
 
-	//set_heartbeat_timer();
+	set_heartbeat_timer();
 
 	connect();
 	send_cmd_frame(LOGGER_DATA_ERASE);

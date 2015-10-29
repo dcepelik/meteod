@@ -1,8 +1,8 @@
 .PHONY: clean
 
 CC=gcc
-CFLAGS=-c -Wall -std=c11 `pkg-config --cflags hidapi-hidraw`
-LDFLAGS=-Wall `pkg-config --libs hidapi-hidraw`
+CFLAGS=-c -Wall -std=c11 `pkg-config --cflags hidapi-libusb`
+LDFLAGS=-Wall `pkg-config --libs hidapi-libusb`
 PROG=logger
 OBJS=logger.o
 
