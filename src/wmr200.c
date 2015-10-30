@@ -97,8 +97,26 @@ send_heartbeat(struct wmr200 *wmr) {
 /******************** data processing ********************/
 
 
+static time_t
+get_reading_time_from_packet(struct wmr200 *wmr) {
+	struct tm time = {
+		.tm_year	= (2000 + wmr->packet[6]) - 1900,
+		.tm_mon		= wmr->packet[5],
+		.tm_mday	= wmr->packet[4],
+		.tm_hour	= wmr->packet[3],
+		.tm_min		= wmr->packet[2],
+		.tm_sec		= 0,
+		.tm_isdst	= -1
+	};
+
+	return mktime(&time);
+}
+
+
 static void
 invoke_handlers(struct wmr200 *wmr, struct wmr_reading *reading) {
+	reading->time = get_reading_time_from_packet(wmr);
+
 	struct wmr_handler *handler = wmr->handler;
 	while (handler != NULL) {
 		handler->handler(reading);
@@ -264,22 +282,6 @@ process_historic_data(struct wmr200 *wmr, uchar *data) {
 /******************** packet processing ********************/
 
 
-static time_t
-parse_packet_time(struct wmr200 *wmr) {
-	struct tm tm = {
-		.tm_year	= (2000 + wmr->packet[6]) - 1900,
-		.tm_mon		= wmr->packet[5],
-		.tm_mday	= wmr->packet[4],
-		.tm_hour	= wmr->packet[3],
-		.tm_min		= wmr->packet[2],
-		.tm_sec		= 0,
-		.tm_isdst	= -1
-	};
-
-	return mktime(&tm);
-}
-
-
 static uint
 verify_packet(struct wmr200 *wmr) {
 	uint sum = 0;
@@ -382,9 +384,7 @@ act_on_packet_type:
 		}
 
 		DEBUG_MSG("Packet 0x%02X (%u bytes)\n", wmr->packet_type, wmr->packet_len);
-		printf("%li {\n", (long)parse_packet_time(wmr));
 		dispatch_packet(wmr);
-		printf("}\n\n");
 
 		free(wmr->packet);
 	}
