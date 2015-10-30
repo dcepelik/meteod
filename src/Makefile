@@ -1,7 +1,7 @@
 .PHONY: clean
 
 CC=gcc
-CFLAGS=-c -Wall -std=c11 `pkg-config --cflags hidapi-libusb` -DDEBUG -g
+CFLAGS=-c -Wall -std=gnu11 `pkg-config --cflags hidapi-libusb` -DDEBUG
 LDFLAGS=-Wall `pkg-config --libs hidapi-libusb`
 PROG=wmrd
 OBJS=wmrd.o wmr200.o

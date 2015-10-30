@@ -299,7 +299,7 @@ act_on_packet_type:
 
 		case COMMUNICATION_STOP:
 			// ignore, sent as response to prev COMMUNICATION_STOP request
-			DEBUG_MSG("Ignoring COMMUNICATION_STOP wmr->packet\n");
+			DEBUG_MSG("Ignoring COMMUNICATION_STOP packet\n");
 			break;
 		}
 
@@ -347,37 +347,22 @@ act_on_packet_type:
 }
 
 
-/******************** signal handlers, heartbeat timer ********************/
+/******************** heartbeat timer ********************/
 
 
 static void
-dispatch_signal(int signum) {
-	switch (signum) {
-	case SIGINT:
-	case SIGTERM:
-		printf("\n\nCaught signal %i, will exit\n", signum);
-
-		wmr_end(wmr_global);
-		exit(0);
-
-	case SIGALRM:
-		send_heartbeat(wmr_global);
-		signal(SIGALRM, dispatch_signal);
-		break;
-	}
+alrm_handler(int signum) {
+	send_heartbeat(wmr_global);
 }
 
 
 static void
-register_sighandlers() {
-	signal(SIGINT, dispatch_signal);
-	signal(SIGTERM, dispatch_signal);
-	signal(SIGALRM, dispatch_signal);
-}
+setup_timer() {
+	struct sigaction sa;
+	sa.sa_handler = alrm_handler;
+	sa.sa_flags = SA_RESTART;
+	sigaction(SIGALRM, &sa, NULL); // TODO
 
-
-static void
-start_timer() {
 	struct itimerval itval;
 	itval.it_interval.tv_sec = HEARTBEAT_INTERVAL;
 	itval.it_value.tv_sec = HEARTBEAT_INTERVAL;
@@ -423,7 +408,7 @@ wmr_open() {
 	}
 
 	send_heartbeat(wmr);
-	start_timer();
+	setup_timer();
 
 	return wmr;
 }
@@ -443,7 +428,6 @@ wmr_close(struct wmr200 *wmr) {
 void
 wmr_init() {
 	hid_init();
-	register_sighandlers();
 }
 
 
