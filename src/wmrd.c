@@ -4,7 +4,7 @@
 #include "wmr200.h"
 #include "macros.h"
 
-#include "stdout_handler.h"
+#include "file_logger.h"
 
 
 struct wmr200 *wmr;
@@ -17,6 +17,12 @@ cleanup(int signum) {
 
 	printf("\n\nCaught signal %i, will exit\n", signum);
 	exit(0);
+}
+
+
+static void
+handler(struct wmr_reading *reading) {
+	log_to_file(reading, stdout);
 }
 
 
@@ -35,7 +41,7 @@ main(int argc, const char *argv[]) {
 		return (1);
 	}
 
-	wmr_set_handler(wmr, stdout_handler);
+	wmr_set_handler(wmr, handler);
 
 	wmr_main_loop(wmr);
 

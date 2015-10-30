@@ -4,7 +4,7 @@ CC=gcc
 CFLAGS=-c -Wall -std=gnu11 `pkg-config --cflags hidapi-libusb` -DDEBUG
 LDFLAGS=-Wall `pkg-config --libs hidapi-libusb`
 PROG=wmrd
-OBJS=common.o wmr200.o wmrd.o stdout_handler.o
+OBJS=common.o wmr200.o wmrd.o file_logger.o
 
 ${PROG}: ${OBJS}
 	${CC} ${LDFLAGS} -o ${PROG} $^
