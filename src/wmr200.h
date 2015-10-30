@@ -72,11 +72,11 @@ struct wmr_uvi_reading {
 struct wmr_baro_reading {
 	uint pressure;		// immediate pressure, hPa
 	uint alt_pressure;	// TODO
-	char *forecast;		// name of "forecast icon", see `wmr200.c'
+	const char *forecast;	// name of "forecast icon", see `wmr200.c'
 };
 
 
-struct wmr_temp_hum_reading {
+struct wmr_temp_reading {
 	uint sensor_id;		// ID in range 0..MAX_EXT_SENSORS, 0 = console
 	uint humidity;		// relative humidity, percent
 	uint heat_index;	// value 0..4, 0 = undefined (temp too low)
@@ -86,17 +86,17 @@ struct wmr_temp_hum_reading {
 
 
 struct wmr_status_reading {
-	char *wind_bat;		// battery levels, see `wmr200.c'
-	char *temp_hum;
-	char *rain_bat;
-	char *uv_bat;
+	const char *wind_bat;		// battery levels, see `wmr200.c'
+	const char *temp_bat;
+	const char *rain_bat;
+	const char *uv_bat;
 
-	char *wind_sensor;	// sensor states, see `wmr200.c'
-	char *temp_hum_sensor;
-	char *rain_sensor;
-	char *uv_sensor;
+	const char *wind_sensor;	// sensor states, see `wmr200.c'
+	const char *temp_sensor;
+	const char *rain_sensor;
+	const char *uv_sensor;
 
-	char *rtc_signal_level; // signal level of the RTC
+	const char *rtc_signal_level;	// signal level of the RTC
 };
 
 
@@ -105,11 +105,13 @@ struct wmr_reading {
 	time_t time;
 	union {
 		struct wmr_wind_reading wind;
-		struct wmr_temp_hum_reading *temp_hum;
+		struct wmr_rain_reading rain;
+		struct wmr_uvi_reading uvi;
+		struct wmr_baro_reading baro;
+		struct wmr_temp_reading temp;
+		struct wmr_status_reading status;
 	};
 };
-
-
 
 
 #endif

@@ -16,7 +16,7 @@
 #define RAIN_DATA		0xD4
 #define UVI_DATA		0xD5
 #define BARO_DATA		0xD6
-#define TEMP_HUMID_DATA		0xD7
+#define TEMP_DATA		0xD7
 #define STATUS_DATA		0xD9
 #define REQUEST_HISTORIC_DATA	0xDA
 #define LOGGER_DATA_ERASE	0xDB

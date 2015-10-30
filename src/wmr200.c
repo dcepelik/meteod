@@ -20,9 +20,15 @@
 #include "macros.h"
 
 
-const char *LEVEL[] = { "ok", "low" };
-const char *STATUS[] = { "ok", "failed" };
+const char *LEVEL[] = {		// level (signal, battery)
+	"ok",
+	"low"
+};
 
+const char *STATUS[] = {	// status of a sensor
+	"ok",
+	"failed"
+};
 
 const char *FORECAST[] = {
 	"partly_cloudy-day", "rainy", "cloudy",
@@ -30,14 +36,12 @@ const char *FORECAST[] = {
 	"partly_cloudy-night"
 };
 
-
 const char *WIND_DIRECTION[] = {
 	"N", "NNE", "NE", "ENE",
 	"E", "ESE", "SE", "SSE",
 	"S", "SSW", "SW", "WSW",
 	"W", "WNW", "NW", "NNW"
 };
-
 
 const char *SENSOR_NAMES[1 + MAX_EXT_SENSORS] = {
 	"indoor",
@@ -47,7 +51,6 @@ const char *SENSOR_NAMES[1 + MAX_EXT_SENSORS] = {
 
 
 struct wmr200 *wmr_global; // TODO
-uint exit_flag = 0;
 
 
 /******************** sending and receiving data ********************/
@@ -111,7 +114,7 @@ process_wind_data(struct wmr200 *wmr, uchar *data) {
 	float avg_speed		= (256 * LOW(data[11]) + HIGH(data[10])) / 10.0;
 	float chill		= (data[12] - 32) / 1.8;
 
-	struct wmr_reading reading = {
+	invoke_handlers(wmr, &(struct wmr_reading) {
 		.type = WIND_DATA,
 		.wind = {
 			.dir = WIND_DIRECTION[dir_flag],
@@ -119,30 +122,39 @@ process_wind_data(struct wmr200 *wmr, uchar *data) {
 			.avg_speed = avg_speed,
 			.chill = chill
 		}
-	};
-
-	invoke_handlers(wmr, &reading);
+	});
 }
 
 
 static void
 process_rain_data(struct wmr200 *wmr, uchar *data) {
-	float rain_rate		= (256 * data[8]  +  data[7]) * 25.4;
-	float rain_hour		= (256 * data[10] +  data[9]) * 25.4;
-	float rain_24h		= (256 * data[12] + data[11]) * 25.4;
-	float rain_accum 	= (256 * data[14] + data[13]) * 25.4;
+	float rate		= (256 * data[8]  +  data[7]) * 25.4;
+	float accum_hour	= (256 * data[10] +  data[9]) * 25.4;
+	float accum_24h		= (256 * data[12] + data[11]) * 25.4;
+	float accum_2007 	= (256 * data[14] + data[13]) * 25.4;
 
-	printf("\train.rate: %.2f\n", rain_rate);
-	printf("\train.hour: %.2f\n", rain_hour);
-	printf("\train.24h: %.2f\n", rain_24h);
-	printf("\train.accum: %.2f\n", rain_accum);
+	invoke_handlers(wmr, &(struct wmr_reading) {
+		.type = RAIN_DATA,
+		.rain = {
+			.rate = rate,
+			.accum_hour = accum_hour,
+			.accum_24h = accum_24h,
+			.accum_2007 = accum_2007
+		}
+	});
 }
 
 
 static void
 process_uvi_data(struct wmr200 *wmr, uchar *data) {
 	uint index = LOW(data[7]);
-	printf("\tuvi.index: %u\n", index);
+
+	invoke_handlers(wmr, &(struct wmr_reading) {
+		.type = UVI_DATA,
+		.uvi = {
+			.index = index
+		}
+	});
 }
 
 
@@ -152,15 +164,19 @@ process_baro_data(struct wmr200 *wmr, uchar *data) {
 	uint alt_pressure	= 256 * LOW(data[10]) + data[9];
 	uint forecast_flag	= HIGH(data[8]);
 
-	// pressure, altitude pressure and forecast flag
-	printf("\tbaro.pressure: %u\n", pressure);
-	printf("\tbaro.alt_pressure: %u\n", alt_pressure);
-	printf("\tbaro.forecast: %s\n", FORECAST[forecast_flag]);
+	invoke_handlers(wmr, &(struct wmr_reading) {
+		.type = BARO_DATA,
+		.baro = {
+			.pressure = pressure,
+			.alt_pressure = alt_pressure,
+			.forecast = FORECAST[forecast_flag]
+		}
+	});
 }
 
 
 static void
-process_temp_humid_data(struct wmr200 *wmr, uchar *data) {
+process_temp_data(struct wmr200 *wmr, uchar *data) {
 	int sensor_id = data[7] & 0xF;
 
 	// TODO
@@ -168,9 +184,6 @@ process_temp_humid_data(struct wmr200 *wmr, uchar *data) {
 		fprintf(stderr, "Unknown sensor, ID: %i\n", sensor_id);
 		exit(1);
 	}
-
-	const char *sensor_name = SENSOR_NAMES[sensor_id];
-
 
 	uint humidity   = data[10];
 	uint heat_index = data[13];
@@ -181,38 +194,50 @@ process_temp_humid_data(struct wmr200 *wmr, uchar *data) {
 	float dew_point = (256 * LOW(data[12]) + data[11]) / 10.0;
 	if (HIGH(data[12]) == SIGN_NEGATIVE) dew_point = -dew_point;
 
-	printf("\ttemp_hum.%s.humidity: %u\n", sensor_name, humidity);
-	printf("\ttemp_hum.%s.heat_index: %u\n", sensor_name, heat_index);
-	printf("\ttemp_hum.%s.temp: %.1f\n", sensor_name, temp);
-	printf("\ttemp_hum.%s.dew_point: %.1f\n", sensor_name, dew_point);
+
+	invoke_handlers(wmr, &(struct wmr_reading) {
+		.type = TEMP_DATA,
+		.temp = {
+			.humidity = humidity,
+			.heat_index = heat_index,
+			.temp = temp,
+			.dew_point = dew_point
+		}
+	});
 }
 
 
 static void
 process_status_data(struct wmr200 *wmr, uchar *data) {
 	uint wind_bat_flag		= NTH_BIT(0, data[4]);
-	uint temp_hum_bat_flag		= NTH_BIT(1, data[4]);
+	uint temp_bat_flag		= NTH_BIT(1, data[4]);
 	uint rain_bat_flag		= NTH_BIT(4, data[5]);
 	uint uv_bat_flag		= NTH_BIT(5, data[5]);
 
 	uint wind_sensor_flag 		= NTH_BIT(0, data[2]);
-	uint temp_hum_sensor_flag	= NTH_BIT(1, data[2]);
+	uint temp_sensor_flag		= NTH_BIT(1, data[2]);
 	uint rain_sensor_flag		= NTH_BIT(4, data[3]);
 	uint uv_sensor_flag		= NTH_BIT(5, data[3]);
 
 	uint rtc_signal_flag		= NTH_BIT(8, data[4]);
 
-	printf("\tstatus.wind.bat: %s\n", LEVEL[wind_bat_flag]);
-	printf("\tstatus.temp_hum.bat: %s\n", LEVEL[temp_hum_bat_flag]);
-	printf("\tstatus.rain.bat: %s\n", LEVEL[rain_bat_flag]);
-	printf("\tstatus.uv.bat: %s\n", LEVEL[uv_bat_flag]);
 
-	printf("\tstatus.wind.sensor: %s\n", STATUS[wind_sensor_flag]);
-	printf("\tstatus.temp_hum.sensor: %s\n", STATUS[temp_hum_sensor_flag]);
-	printf("\tstatus.rain.sensor: %s\n", STATUS[rain_sensor_flag]);
-	printf("\tstatus.uv.sensor: %s\n", STATUS[uv_sensor_flag]);
+	invoke_handlers(wmr, &(struct wmr_reading) {
+		.type = STATUS_DATA,
+		.status = {
+			.wind_bat = LEVEL[wind_bat_flag],
+			.temp_bat = LEVEL[temp_bat_flag],
+			.rain_bat = LEVEL[rain_bat_flag],
+			.uv_bat = LEVEL[uv_bat_flag],
 
-	printf("\tstatus.rtc.signal: %s\n", LEVEL[rtc_signal_flag]);
+			.wind_sensor = STATUS[wind_sensor_flag],
+			.temp_sensor = STATUS[temp_sensor_flag],
+			.rain_sensor = STATUS[rain_sensor_flag],
+			.uv_sensor = STATUS[uv_sensor_flag],
+
+			.rtc_signal_level = LEVEL[rtc_signal_flag]
+		}
+	});
 }
 
 
@@ -222,7 +247,7 @@ process_historic_data(struct wmr200 *wmr, uchar *data) {
 	process_wind_data(wmr, data + 13);
 	process_uvi_data(wmr, data + 20);
 	process_baro_data(wmr, data + 21);
-	process_temp_humid_data(wmr, data + 26);
+	process_temp_data(wmr, data + 26);
 
 	uint ext_sensor_count = data[32];
 	if (ext_sensor_count > MAX_EXT_SENSORS) {
@@ -231,7 +256,7 @@ process_historic_data(struct wmr200 *wmr, uchar *data) {
 	}
 
 	for (uint i = 0; i < ext_sensor_count; i++) {
-		process_temp_humid_data(wmr, data + 33 + (7 * i));
+		process_temp_data(wmr, data + 33 + (7 * i));
 	}
 }
 
@@ -256,13 +281,22 @@ parse_packet_time(struct wmr200 *wmr) {
 
 
 static uint
-calc_packet_checksum(struct wmr200 *wmr) {
+verify_packet(struct wmr200 *wmr) {
 	uint sum = 0;
 	for (uint i = 0; i < wmr->packet_len - 2; i++) {
 		sum += wmr->packet[i];
 	}
 
-	return sum;
+	uint checksum = 256 * wmr->packet[wmr->packet_len - 1]
+		            + wmr->packet[wmr->packet_len - 2];
+
+	if (sum != checksum) {
+		return (-1);
+	}
+
+	// verify packet_len
+
+	return (0);
 }
 
 
@@ -272,24 +306,31 @@ dispatch_packet(struct wmr200 *wmr) {
 	case HISTORIC_DATA:
 		process_historic_data(wmr, wmr->packet);
 		break;
+
 	case WIND_DATA:
 		process_wind_data(wmr, wmr->packet);
 		break;
+
 	case RAIN_DATA:
 		process_rain_data(wmr, wmr->packet);
 		break;
+
 	case UVI_DATA:
 		process_uvi_data(wmr, wmr->packet);
 		break;
+
 	case BARO_DATA:
 		process_baro_data(wmr, wmr->packet);
 		break;
-	case TEMP_HUMID_DATA:
-		process_temp_humid_data(wmr, wmr->packet);
+
+	case TEMP_DATA:
+		process_temp_data(wmr, wmr->packet);
 		break;
+
 	case STATUS_DATA:
 		process_status_data(wmr, wmr->packet);
 		break;
+
 	default:
 		DEBUG_MSG("Ignoring unknown packet %u\n", wmr->packet_type);
 	}
@@ -335,12 +376,8 @@ act_on_packet_type:
 			wmr->packet[i] = read_byte(wmr);
 		}
 
-		uint recv_checksum
-			= 256 * wmr->packet[wmr->packet_len - 1]
-			+ wmr->packet[wmr->packet_len - 2];
-
-		if (recv_checksum != calc_packet_checksum(wmr)) {
-			fprintf(stderr, "Incorrect packet checksum, dropping packet\n");
+		if (verify_packet(wmr) != 0) {
+			fprintf(stderr, "Packet incorrect, dropping\n");
 			continue;
 		}
 
@@ -350,11 +387,6 @@ act_on_packet_type:
 		printf("}\n\n");
 
 		free(wmr->packet);
-
-		if (exit_flag) {
-			wmr_close(wmr);
-			exit(0);
-		}
 	}
 }
 
