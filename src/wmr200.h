@@ -2,63 +2,114 @@
 #define WMR200_H
 
 #include <hidapi.h>
-
 #include "common.h"
+#include "macros.h"
 
 
-#define WMR200_VID	0x0FDE
-#define WMR200_PID	0xCA01
-
-#define FRAME_SIZE		8	// Bytes
-#define HEARTBEAT_INTERVAL	30	// seconds
-#define MAX_EXT_SENSORS		10
-
-#define HEARTBEAT		0xD0
-#define HISTORIC_DATA_NOTIF	0xD1
-#define HISTORIC_DATA		0xD2
-#define WIND_DATA		0xD3
-#define RAIN_DATA		0xD4
-#define UVI_DATA		0xD5
-#define BARO_DATA		0xD6
-#define TEMP_HUMID_DATA		0xD7
-#define STATUS_DATA		0xD9
-#define REQUEST_HISTORIC_DATA	0xDA
-#define LOGGER_DATA_ERASE	0xDB
-#define COMMUNICATION_STOP	0xDF
-
-#define SIGN_POSITIVE		0x0
-#define SIGN_NEGATIVE		0x8
+struct wmr_reading;
 
 
-#define NTH_BIT(n, val)		(((val) >> (n)) & 1)
-#define HIGH(b)			LOW((b) >> 4)
-#define LOW(b)			((b) &  0xF)
+struct wmr_handler {
+	void (*handler)(struct wmr_reading *);
+	struct wmr_handler *next;
+};
 
 
 struct wmr200 {
-	hid_device *dev;
+	hid_device *dev;			// HIDAPI device handle
 
-	// data receiving buffer
-	uchar buf[FRAME_SIZE];
+	uchar buf[FRAME_SIZE];			// receive buffer
 	uint buf_avail;
 	uint buf_pos;
 
-	// packet being processed
-	uchar *packet;
+	uchar *packet;				// packet being processed
 	uchar packet_type;
 	uint packet_len;
+
+	struct wmr_handler *handler;		// handlers
 };
 
 
 void wmr_init();
 
+
 void wmr_end();
+
 
 struct wmr200 *wmr_open();
 
+
 void wmr_close(struct wmr200 *wmr);
 
+
 void wmr_main_loop(struct wmr200 *wmr);
+
+
+void wmr_set_handler(struct wmr200 *wmr, void (*handler)(struct wmr_reading *));
+
+
+struct wmr_wind_reading {
+	const char *dir;	// wind direction, see `wmr200.c'
+	float gust_speed;	// gust speed, m/s
+	float avg_speed;	// average speed, m/s
+	float chill;		// TODO
+};
+
+
+struct wmr_rain_reading {
+	float rate;		// immediate rain rate, mm/m^2
+	float accum_hour;	// rain last hour, mm/m^2
+	float accum_24h;	// rain 24 hours (without rain_hour), mm/m^2
+	float accum_2007;	// accumulated rain since 2007-01-01 12:00, mm/m^2
+};
+
+
+struct wmr_uvi_reading {
+	uint index;		// "UV index", value in range 0..15
+};
+
+
+struct wmr_baro_reading {
+	uint pressure;		// immediate pressure, hPa
+	uint alt_pressure;	// TODO
+	char *forecast;		// name of "forecast icon", see `wmr200.c'
+};
+
+
+struct wmr_temp_hum_reading {
+	uint sensor_id;		// ID in range 0..MAX_EXT_SENSORS, 0 = console
+	uint humidity;		// relative humidity, percent
+	uint heat_index;	// value 0..4, 0 = undefined (temp too low)
+	float temp;		// temperature, deg C
+	float dew_point;	// dew point, deg C
+};
+
+
+struct wmr_status_reading {
+	char *wind_bat;		// battery levels, see `wmr200.c'
+	char *temp_hum;
+	char *rain_bat;
+	char *uv_bat;
+
+	char *wind_sensor;	// sensor states, see `wmr200.c'
+	char *temp_hum_sensor;
+	char *rain_sensor;
+	char *uv_sensor;
+
+	char *rtc_signal_level; // signal level of the RTC
+};
+
+
+struct wmr_reading {
+	uint type;
+	time_t time;
+	union {
+		struct wmr_wind_reading wind;
+		struct wmr_temp_hum_reading *temp_hum;
+	};
+};
+
+
 
 
 #endif

@@ -9,22 +9,27 @@
  */
 
 
+#include <stdlib.h>
 #include <signal.h>
 #include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
 
+#include "common.h"
 #include "wmr200.h"
+#include "macros.h"
 
 
 const char *LEVEL[] = { "ok", "low" };
 const char *STATUS[] = { "ok", "failed" };
+
 
 const char *FORECAST[] = {
 	"partly_cloudy-day", "rainy", "cloudy",
 	"sunny", "clear", "snowy",
 	"partly_cloudy-night"
 };
+
 
 const char *WIND_DIRECTION[] = {
 	"N", "NNE", "NE", "ENE",
@@ -33,9 +38,11 @@ const char *WIND_DIRECTION[] = {
 	"W", "WNW", "NW", "NNW"
 };
 
-// todo
+
 const char *SENSOR_NAMES[1 + MAX_EXT_SENSORS] = {
-	"indoor", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"
+	"indoor",
+	"1", "2", "3", "4", "5",
+	"6", "7", "8", "9", "10"
 };
 
 
@@ -88,29 +95,43 @@ send_heartbeat(struct wmr200 *wmr) {
 
 
 static void
-process_wind_data(uchar *data, uint data_len) {
-	uint wind_dir_flag	= LOW(data[7]);
-	float wind_gust_speed	= (256 * LOW(data[10]) +      data[9])   / 10.0;
-	float wind_avg_speed	= (256 * LOW(data[11]) + HIGH(data[10])) / 10.0;
-	float wind_chill	= (data[12] - 32) / 1.8;
-
-	// wind direction, wind gust speed, wind average speed and wind chill
-	printf("\twind.dir: %s\n", WIND_DIRECTION[wind_dir_flag]);
-	printf("\twind.gust_speed: %.2f\n", wind_gust_speed);
-	printf("\twind.avg_speed: %.2f\n", wind_avg_speed);
-	printf("\twind.chill: %.1f\n", wind_chill);
+invoke_handlers(struct wmr200 *wmr, struct wmr_reading *reading) {
+	struct wmr_handler *handler = wmr->handler;
+	while (handler != NULL) {
+		handler->handler(reading);
+		handler = handler->next;
+	}
 }
 
 
 static void
-process_rain_data(uchar *data, uint data_len) {
+process_wind_data(struct wmr200 *wmr, uchar *data) {
+	uint dir_flag		= LOW(data[7]);
+	float gust_speed	= (256 * LOW(data[10]) +      data[9])   / 10.0;
+	float avg_speed		= (256 * LOW(data[11]) + HIGH(data[10])) / 10.0;
+	float chill		= (data[12] - 32) / 1.8;
+
+	struct wmr_reading reading = {
+		.type = WIND_DATA,
+		.wind = {
+			.dir = WIND_DIRECTION[dir_flag],
+			.gust_speed = gust_speed,
+			.avg_speed = avg_speed,
+			.chill = chill
+		}
+	};
+
+	invoke_handlers(wmr, &reading);
+}
+
+
+static void
+process_rain_data(struct wmr200 *wmr, uchar *data) {
 	float rain_rate		= (256 * data[8]  +  data[7]) * 25.4;
 	float rain_hour		= (256 * data[10] +  data[9]) * 25.4;
 	float rain_24h		= (256 * data[12] + data[11]) * 25.4;
 	float rain_accum 	= (256 * data[14] + data[13]) * 25.4;
 
-	// rain rate, rain last hour, rain last 24 hours (excl. last hour)
-	// and accumulated rain since 2007-01-01 12:00
 	printf("\train.rate: %.2f\n", rain_rate);
 	printf("\train.hour: %.2f\n", rain_hour);
 	printf("\train.24h: %.2f\n", rain_24h);
@@ -119,14 +140,14 @@ process_rain_data(uchar *data, uint data_len) {
 
 
 static void
-process_uvi_data(uchar *data, uint data_len) {
+process_uvi_data(struct wmr200 *wmr, uchar *data) {
 	uint index = LOW(data[7]);
 	printf("\tuvi.index: %u\n", index);
 }
 
 
 static void
-process_baro_data(uchar *data, uint data_len) {
+process_baro_data(struct wmr200 *wmr, uchar *data) {
 	uint pressure		= 256 * LOW(data[8])  + data[7];
 	uint alt_pressure	= 256 * LOW(data[10]) + data[9];
 	uint forecast_flag	= HIGH(data[8]);
@@ -139,7 +160,7 @@ process_baro_data(uchar *data, uint data_len) {
 
 
 static void
-process_temp_humid_data(uchar *data, uint data_len) {
+process_temp_humid_data(struct wmr200 *wmr, uchar *data) {
 	int sensor_id = data[7] & 0xF;
 
 	// TODO
@@ -160,7 +181,6 @@ process_temp_humid_data(uchar *data, uint data_len) {
 	float dew_point = (256 * LOW(data[12]) + data[11]) / 10.0;
 	if (HIGH(data[12]) == SIGN_NEGATIVE) dew_point = -dew_point;
 
-	// temperature, dew point, humidity and heat index
 	printf("\ttemp_hum.%s.humidity: %u\n", sensor_name, humidity);
 	printf("\ttemp_hum.%s.heat_index: %u\n", sensor_name, heat_index);
 	printf("\ttemp_hum.%s.temp: %.1f\n", sensor_name, temp);
@@ -169,7 +189,7 @@ process_temp_humid_data(uchar *data, uint data_len) {
 
 
 static void
-process_status_data(uchar *data, uint data_len) {
+process_status_data(struct wmr200 *wmr, uchar *data) {
 	uint wind_bat_flag		= NTH_BIT(0, data[4]);
 	uint temp_hum_bat_flag		= NTH_BIT(1, data[4]);
 	uint rain_bat_flag		= NTH_BIT(4, data[5]);
@@ -182,30 +202,27 @@ process_status_data(uchar *data, uint data_len) {
 
 	uint rtc_signal_flag		= NTH_BIT(8, data[4]);
 
-	// batteries
 	printf("\tstatus.wind.bat: %s\n", LEVEL[wind_bat_flag]);
 	printf("\tstatus.temp_hum.bat: %s\n", LEVEL[temp_hum_bat_flag]);
 	printf("\tstatus.rain.bat: %s\n", LEVEL[rain_bat_flag]);
 	printf("\tstatus.uv.bat: %s\n", LEVEL[uv_bat_flag]);
 
-	// sensor states
 	printf("\tstatus.wind.sensor: %s\n", STATUS[wind_sensor_flag]);
 	printf("\tstatus.temp_hum.sensor: %s\n", STATUS[temp_hum_sensor_flag]);
 	printf("\tstatus.rain.sensor: %s\n", STATUS[rain_sensor_flag]);
 	printf("\tstatus.uv.sensor: %s\n", STATUS[uv_sensor_flag]);
 
-	// real-time clock signal strength
 	printf("\tstatus.rtc.signal: %s\n", LEVEL[rtc_signal_flag]);
 }
 
 
 static void
-process_historic_data(uchar *data, uint data_len) {
-	process_rain_data(data, 0);
-	process_wind_data(data + 13, 0);
-	process_uvi_data(data + 20, 0);
-	process_baro_data(data + 21, 0);
-	process_temp_humid_data(data + 26, 0);
+process_historic_data(struct wmr200 *wmr, uchar *data) {
+	process_rain_data(wmr, data);
+	process_wind_data(wmr, data + 13);
+	process_uvi_data(wmr, data + 20);
+	process_baro_data(wmr, data + 21);
+	process_temp_humid_data(wmr, data + 26);
 
 	uint ext_sensor_count = data[32];
 	if (ext_sensor_count > MAX_EXT_SENSORS) {
@@ -214,7 +231,7 @@ process_historic_data(uchar *data, uint data_len) {
 	}
 
 	for (uint i = 0; i < ext_sensor_count; i++) {
-		process_temp_humid_data(data + 33 + (7 * i), 0);
+		process_temp_humid_data(wmr, data + 33 + (7 * i));
 	}
 }
 
@@ -253,25 +270,25 @@ static void
 dispatch_packet(struct wmr200 *wmr) {
 	switch (wmr->packet_type) {
 	case HISTORIC_DATA:
-		process_historic_data(wmr->packet, wmr->packet_len);
+		process_historic_data(wmr, wmr->packet);
 		break;
 	case WIND_DATA:
-		process_wind_data(wmr->packet, wmr->packet_len);
+		process_wind_data(wmr, wmr->packet);
 		break;
 	case RAIN_DATA:
-		process_rain_data(wmr->packet, wmr->packet_len);
+		process_rain_data(wmr, wmr->packet);
 		break;
 	case UVI_DATA:
-		process_uvi_data(wmr->packet, wmr->packet_len);
+		process_uvi_data(wmr, wmr->packet);
 		break;
 	case BARO_DATA:
-		process_baro_data(wmr->packet, wmr->packet_len);
+		process_baro_data(wmr, wmr->packet);
 		break;
 	case TEMP_HUMID_DATA:
-		process_temp_humid_data(wmr->packet, wmr->packet_len);
+		process_temp_humid_data(wmr, wmr->packet);
 		break;
 	case STATUS_DATA:
-		process_status_data(wmr->packet, wmr->packet_len);
+		process_status_data(wmr, wmr->packet);
 		break;
 	default:
 		DEBUG_MSG("Ignoring unknown packet %u\n", wmr->packet_type);
@@ -310,12 +327,7 @@ act_on_packet_type:
 			goto act_on_packet_type;
 		}
 
-		wmr->packet = malloc(wmr->packet_len);
-		if (wmr->packet == NULL) {
-			fprintf(stderr, "Cannot malloc %u bytes of memory\n", wmr->packet_len);
-			exit(1);
-		}
-
+		wmr->packet = malloc_safe(wmr->packet_len);
 		wmr->packet[0] = wmr->packet_type;
 		wmr->packet[1] = wmr->packet_len;
 
@@ -384,11 +396,7 @@ stop_timer() {
 
 struct wmr200 *
 wmr_open() {
-	struct wmr200 *wmr = malloc(sizeof(struct wmr200));
-	if (wmr == NULL) {
-		DEBUG_MSG("malloc(): cannot allocate memory for struct wmr200\n");
-		return NULL;
-	}
+	struct wmr200 *wmr = malloc_safe(sizeof(struct wmr200));
 
 	wmr->dev = hid_open(WMR200_VID, WMR200_PID, NULL);
 	if (wmr->dev == NULL) {
@@ -398,6 +406,8 @@ wmr_open() {
 
 	wmr->packet = NULL;
 	wmr->buf_avail = wmr->buf_pos = 0;
+	wmr->handler = NULL;
+
 	wmr_global = wmr; // TODO
 
 	// some kind of wake-up command
@@ -440,4 +450,13 @@ wmr_end() {
 void
 wmr_main_loop(struct wmr200 *wmr) {
 	main_loop(wmr);
+}
+
+
+void
+wmr_set_handler(struct wmr200 *wmr, void (*handler)(struct wmr_reading *)) {
+	struct wmr_handler *wh = malloc_safe(sizeof(struct wmr_handler));
+	wh->handler = handler;
+	wh->next = wmr->handler;
+	wmr->handler = wh;
 }

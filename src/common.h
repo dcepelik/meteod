@@ -16,4 +16,7 @@ typedef unsigned char		uchar;
 #endif
 
 
+void *malloc_safe(size_t size);
+
+
 #endif
