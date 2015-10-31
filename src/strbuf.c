@@ -75,6 +75,19 @@ strbuf_append(strbuf *buf, char *format, ...) {
 }
 
 
+void
+strbuf_prepend(strbuf *buf, char *format, ...) {
+	va_list args;
+	va_start(args, format);
+
+	char *orig_str = strbuf_copy(buf);
+	strbuf_vprintf_at(buf, 0, format, args);
+	strbuf_append(buf, "%s", orig_str);
+
+	free(orig_str);
+}
+
+
 char *
 strbuf_copy(strbuf *buf) {
 	char *str = malloc(buf->offset + 1);

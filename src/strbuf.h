@@ -69,4 +69,10 @@ char *strbuf_copy(strbuf *buf);
 void strbuf_free(strbuf *buf);
 
 
+/*
+ *
+ */
+void strbuf_prepend(strbuf *buf, char *format, ...);
+
+
 #endif

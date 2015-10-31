@@ -129,7 +129,7 @@ static void
 process_wind_data(struct wmr200 *wmr, uchar *data) {
 	uint dir_flag		= LOW(data[7]);
 	float gust_speed	= (256 * LOW(data[10]) +      data[9])   / 10.0;
-	float avg_speed		= (256 * LOW(data[11]) + HIGH(data[10])) / 10.0;
+	float avg_speed		= ( 16 * LOW(data[11]) + HIGH(data[10])) / 10.0;
 	float chill		= (data[12] - 32) / 1.8;
 
 	invoke_handlers(wmr, &(struct wmr_reading) {
