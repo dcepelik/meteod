@@ -49,7 +49,54 @@ log_wind(struct wmr_wind_reading *wind) {
 		wind->gust_speed
 	);
 
-	write_rrd("wind.rrd", &data);
+	write_rrd(WIND_RRD, &data);
+	strbuf_free(&data);
+}
+
+
+static void
+log_rain(struct wmr_rain_reading *rain) {
+	strbuf data;
+	strbuf_init(&data);
+	strbuf_append(
+		&data,
+		"%.1f:%.0f",
+		rain->rate,
+		rain->accum_2007
+	);
+
+	write_rrd(RAIN_RRD, &data);
+	strbuf_free(&data);
+}
+
+
+static void
+log_uvi(struct wmr_uvi_reading *uvi) {
+	strbuf data;
+	strbuf_init(&data);
+	strbuf_append(
+		&data,
+		"%u",
+		uvi->index
+	);
+
+	write_rrd(UVI_RRD, &data);
+	strbuf_free(&data);
+}
+
+
+static void
+log_baro(struct wmr_baro_reading *baro) {
+	strbuf data;
+	strbuf_init(&data);
+	strbuf_append(
+		&data,
+		"%.1f:%.1f",
+		baro->pressure,
+		baro->alt_pressure
+	);
+
+	write_rrd(BARO_RRD, &data);
 	strbuf_free(&data);
 }
 
@@ -58,11 +105,17 @@ static void
 log_temp(struct wmr_temp_reading *temp) {
 	strbuf data;
 	strbuf_init(&data);
-	strbuf_append(&data, "%.1f", temp->temp);
+	strbuf_append(
+		&data,
+		"%.1f:%.1f:%.1f",
+		temp->temp,
+		temp->humidity,
+		temp->dew_point
+	);
 
 	strbuf filename; // filename depends on sensor ID
 	strbuf_init(&filename);
-	strbuf_append(&filename, "temp%u.rrd", temp->sensor_id);
+	strbuf_append(&filename, TEMPN_RRD, temp->sensor_id);
 
 	write_rrd(filename.str, &data);
 
@@ -78,10 +131,23 @@ log_to_rrd(struct wmr_reading *reading, char *rrd_file) {
 		log_wind(&reading->wind);
 		break;
 
+	case RAIN_DATA:
+		log_rain(&reading->rain);
+		break;
+
+	case UVI_DATA:
+		log_uvi(&reading->uvi);
+		break;
+
+	case BARO_DATA:
+		log_baro(&reading->baro);
+		break;
+
 	case TEMP_DATA:
 		log_temp(&reading->temp);
 		break;
 	}
 }
+
 
 

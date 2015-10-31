@@ -1,87 +1,61 @@
-# WRM200 datalogger
+# Oregon Scientific WRM200 weather station toolbox
 
 ## Overview
 
-This is a very, very simple data logger for the Oregon Scienitif WMR200 weather
-stations.
+This project consists of several tools that are of interest to WMR200 owners:
 
-When connected to a PC, WMR200 is capable of a simple dialogue during which it
-transfers current (and possibly also past) weather data. The protocol itself is
-not open, but has been fairly well understood by enthusiasts.
+* `wmr200`, USB HID communication wrapper that speaks the proprietary protocol
+	of WMR200 and encapsulates readings into well-defined data structures.
+* `wmrd`, data logger for the weather station.
+* `wmrc`, a client to `wmrd` server component that can query current readings
+over TCP/IP for you.
 
-This datalogger can talk and listen to the WMR200 and understand almost all of
-the readings you can see on the console itself:
+These tools provide you with just enough power to build a website showing your
+weather stations current and past readings with nice `rrdtool` graphs and your
+station's operational status. An example website is included to get you started.
 
-* Wind direction, wind gust speed, wind average speed and wind chill
-* Rain rate, rain during last hour, rain in last 24 hours, rain total
-* Pressure and altitude pressure, basic "weather forecast" (cloudy, sunny, rainy, ...)
-* Temperature, humidity, dewpoint and heat index
-* System operational status: batteries, signal levels, etc.
+###  `wmr200`
 
+WMR200 allows you to connect to your station's console over USB and read it's
+current (and possibly past) readings, which include:
+
+* **Wind readings**---direction, gust speed, average speed and wind chill
+* **Rain readings**---rain rate, total for the last hour, total for 24 hours and
+	total since always
+* **UV index**
+* **Barometric readings**---pressure, pressure at sea level and a simple
+	"weather forecast"
+* **Temperature/humidity readings**---temperature, humidity, dewpoint
+	and heat index
+* **Operational status**---batteries and signal levels for individual sensors,
+	RTC signal level
+
+### `wmrd`
+
+This is the data logger itself. Several (two) "loggers" are provided:
+`file_logger` and `rrd_logger`.
+
+File logger logs readings into a file in a straight-forward format, `rrd_logger`
+saves readings into round-robin database (RRD) files.
+
+The loggers may be registered as "data handlers" with `wmr200` wrapper. You can
+have as many handlers as you wish, including your own.
 
 ## Project status
 
-This program is under active development and cannot be considered stable at the
-time of writing, because severe modifications will follow soon.
-
-But if you are a C developer (or if you have a lot of enthusiasm), it may be
-of use or interest to you anyway.
-
-Just don't expect things won't change. I haven't tested the outputs thorougly,
-so be careful.
-
-If you find any errors, **please do let me know!**
-
-
-### Plan
-
-* Write a Perl processor of `logger`'s output and push all data to RRDtool
-* Write a CGI Perl script to host a nice little website presenting current
-	and past readings with nice graphs from RRDtool
-* Thorougly test everything
-* Daemonize the logger and the Perl script
+At this moment, everything is work-in-progress. If you find any errors,
+**please do let me know!**
 
 ## Dependencies
 
-HIDAPI library is required.
-
+* `libhidapi`
+* `librrd`
 
 ## Installation and usage
 
-Just `make` it and run `logger`. Output is (at the moment) only possible to
-`stdout`.
+Just `make` it. The rest needs to be figured by you right now. A good starting
+place would be too run `wmrd` and have a look at `wmrd.c` to see what it does
+and how.
 
-
-### Output format
-
-Obvious when you look at the output:
-
-	# packet 0xD2 (42 bytes)
-	1448835240 {
-		rain.rate: 0.00
-		rain.hour: 0.00
-		rain.24h: 6629.40
-		rain.accum: 14782.80
-		wind.dir: WSW
-		wind.gust_speed: 0.00
-		wind.avg_speed: 0.00
-		wind.chill: -17.8
-		uvi.index: 15
-		baro.pressure: 994
-		baro.alt_pressure: 1028
-		baro.forecast: clear
-		indoor.humidity: 44
-		indoor.heat_index: 0
-		indoor.temp: 22.1
-		indoor.dew_point: 9.0
-	}
-
-The `#` starts a comment, the numeric value `1448835240` is time of the readings
-(seconds since the epoch).
-
-
-## More info
-
-* This tool was inspired by [Barnybug's WRM100 datalogger](https://github.com/barnybug/wmr100)
-* [WMR200 protocol](http://www.bashewa.com/wmr200-protocol.php)
-* [HIDAPI website](http://www.signal11.us/oss/hidapi/)
+If you plan on using `rrd_logger`, you may want to (customize and) run
+`rrd_create.sh` first to kick-start a simple database.

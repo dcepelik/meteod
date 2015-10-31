@@ -130,7 +130,7 @@ process_wind_data(struct wmr200 *wmr, uchar *data) {
 	uint dir_flag		= LOW(data[7]);
 	float gust_speed	= (256 * LOW(data[10]) +      data[9])   / 10.0;
 	float avg_speed		= ( 16 * LOW(data[11]) + HIGH(data[10])) / 10.0;
-	float chill		= (data[12] - 32) / 1.8;
+	float chill		= data[12]; // (data[12] - 32) / 1.8;
 
 	invoke_handlers(wmr, &(struct wmr_reading) {
 		.type = WIND_DATA,
@@ -285,6 +285,10 @@ process_historic_data(struct wmr200 *wmr, uchar *data) {
 
 static uint
 verify_packet(struct wmr200 *wmr) {
+	if (wmr->packet_len <= 2) {
+		return (-1);
+	}
+
 	uint sum = 0;
 	for (uint i = 0; i < wmr->packet_len - 2; i++) {
 		sum += wmr->packet[i];
