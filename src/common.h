@@ -16,7 +16,13 @@ typedef unsigned char		uchar;
 #endif
 
 
+void *die(char *format, ...);
+
+
 void *malloc_safe(size_t size);
+
+
+void *realloc_safe(void *x, size_t size);
 
 
 #endif

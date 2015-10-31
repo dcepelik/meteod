@@ -219,7 +219,8 @@ process_temp_data(struct wmr200 *wmr, uchar *data) {
 			.humidity = humidity,
 			.heat_index = heat_index,
 			.temp = temp,
-			.dew_point = dew_point
+			.dew_point = dew_point,
+			.sensor_id = sensor_id
 		}
 	});
 }

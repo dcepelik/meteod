@@ -3,8 +3,8 @@
 
 #include "wmr200.h"
 #include "macros.h"
-
 #include "file_logger.h"
+#include "rrd_logger.h"
 
 
 struct wmr200 *wmr;
@@ -23,6 +23,7 @@ cleanup(int signum) {
 static void
 handler(struct wmr_reading *reading) {
 	log_to_file(reading, stdout);
+	log_to_rrd(reading, "/home/david/gymlit/tools/meteo/temp.rrd");
 }
 
 
@@ -36,7 +37,7 @@ main(int argc, const char *argv[]) {
 	wmr_init();
 
 	wmr = wmr_open();
-	if (!wmr) {
+	if (wmr == NULL) {
 		fprintf(stderr, "wmr_connect(): no WMR200 handle returned\n");
 		return (1);
 	}
@@ -50,3 +51,6 @@ main(int argc, const char *argv[]) {
 
 	return (0);
 }
+
+
+
