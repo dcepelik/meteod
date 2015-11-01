@@ -401,7 +401,7 @@ act_on_packet_type:
 
 		wmr->packet_len = read_byte(wmr);
 		if (wmr->packet_len >= 0xD0 && wmr->packet_len <= 0xDF) {
-			// this is a wmr->packet type mark, not wmr->packet length
+			// this is packet type mark, not packet length
 			wmr->packet_type = wmr->packet_len;
 			goto act_on_packet_type;
 		}
