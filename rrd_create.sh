@@ -36,8 +36,8 @@ rrdtool create uvi.rrd \
 
 rrdtool create baro.rrd \
 	--step 180 \
-	DS:pressure:GAUGE:360:800:1200 \
-	DS:alt_pressure:GAUGE:360:800:1200 \
+	DS:pressure:GAUGE:360:U:U \
+	DS:alt_pressure:GAUGE:360:U:U \
 	RRA:AVERAGE:0.5:1:480 \
 	RRA:AVERAGE:0.5:10:480 \
 	RRA:AVERAGE:0.5:60:480 \

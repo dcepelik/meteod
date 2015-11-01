@@ -1,11 +1,8 @@
-#include "file_logger.h"
-#include "wmr200.h"
-
-#include <stdio.h>
+#include "file.h"
 
 
 static void
-handle_wind(struct wmr_wind_reading *wind, FILE *stream) {
+log_wind(struct wmr_wind_reading *wind, FILE *stream) {
 	fprintf(stream, "\twind.dir: %s\n", wind->dir);
 	fprintf(stream, "\twind.gust_speed: %.2f\n", wind->gust_speed);
 	fprintf(stream, "\twind.avg_speed: %.2f\n", wind->avg_speed);
@@ -14,7 +11,7 @@ handle_wind(struct wmr_wind_reading *wind, FILE *stream) {
 
 
 static void
-handle_rain(struct wmr_rain_reading *rain, FILE *stream) {
+log_rain(struct wmr_rain_reading *rain, FILE *stream) {
 	fprintf(stream, "\train.rate: %.2f\n", rain->rate);
 	fprintf(stream, "\train.accum_hour: %.2f\n", rain->accum_hour);
 	fprintf(stream, "\train.accum_24h: %.2f\n", rain->accum_24h);
@@ -23,13 +20,13 @@ handle_rain(struct wmr_rain_reading *rain, FILE *stream) {
 
 
 static void
-handle_uvi(struct wmr_uvi_reading *uvi, FILE *stream) {
+log_uvi(struct wmr_uvi_reading *uvi, FILE *stream) {
 	fprintf(stream, "\tuvi.index: %u\n", uvi->index);
 }
 
 
 static void
-handle_baro(struct wmr_baro_reading *baro, FILE *stream) {
+log_baro(struct wmr_baro_reading *baro, FILE *stream) {
 	fprintf(stream, "\tbaro.pressure: %u\n", baro->pressure);
 	fprintf(stream, "\tbaro.alt_pressure: %u\n", baro->alt_pressure);
 	fprintf(stream, "\tbaro.forecast: %s\n", baro->forecast);
@@ -37,7 +34,7 @@ handle_baro(struct wmr_baro_reading *baro, FILE *stream) {
 
 
 static void
-handle_temp(struct wmr_temp_reading *temp, FILE *stream) {
+log_temp(struct wmr_temp_reading *temp, FILE *stream) {
 	uint id = temp->sensor_id;
 
 	fprintf(stream, "\ttemp.%u.humidity: %u\n", id, temp->humidity);
@@ -48,7 +45,7 @@ handle_temp(struct wmr_temp_reading *temp, FILE *stream) {
 
 
 static void
-handle_status(struct wmr_status_reading *status, FILE *stream) {
+log_status(struct wmr_status_reading *status, FILE *stream) {
 	fprintf(stream, "\tstatus.wind_bat: %s\n", status->wind_bat);
 	fprintf(stream, "\tstatus.temp_bat: %s\n", status->temp_bat);
 	fprintf(stream, "\tstatus.rain_bat: %s\n", status->rain_bat);
@@ -69,27 +66,27 @@ log_to_file(struct wmr_reading *reading, FILE *stream) {
 
 	switch (reading->type) {
 	case WIND_DATA:
-		handle_wind(&reading->wind, stream);
+		log_wind(&reading->wind, stream);
 		break;
 
 	case RAIN_DATA:
-		handle_rain(&reading->rain, stream);
+		log_rain(&reading->rain, stream);
 		break;
 
 	case UVI_DATA:
-		handle_uvi(&reading->uvi, stream);
+		log_uvi(&reading->uvi, stream);
 		break;
 
 	case BARO_DATA:
-		handle_baro(&reading->baro, stream);
+		log_baro(&reading->baro, stream);
 		break;
 
 	case TEMP_DATA:
-		handle_temp(&reading->temp, stream);
+		log_temp(&reading->temp, stream);
 		break;
 
 	case STATUS_DATA:
-		handle_status(&reading->status, stream);
+		log_status(&reading->status, stream);
 		break;
 	}
 

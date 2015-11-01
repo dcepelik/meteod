@@ -2,9 +2,8 @@
 #include <signal.h>
 
 #include "wmr200.h"
-#include "macros.h"
-#include "file_logger.h"
-#include "rrd_logger.h"
+#include "loggers/file.h"
+#include "loggers/rrd.h"
 
 
 struct wmr200 *wmr;

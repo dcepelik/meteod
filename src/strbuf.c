@@ -8,10 +8,10 @@
  * Copyright (c) 2014 David Čepelík <cepelik@gymlit.cz>
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-
 #include "strbuf.h"
+
+#include <stdio.h>
+#include <stdlib.h>
 
 
 void

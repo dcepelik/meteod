@@ -1,9 +1,11 @@
 #ifndef WMR200_H
 #define WMR200_H
 
-#include <hidapi.h>
+#include "wmr.h"
 #include "common.h"
-#include "macros.h"
+
+#include <stdio.h>
+#include <hidapi.h>
 
 
 struct wmr_reading;
@@ -15,7 +17,7 @@ struct wmr_handler {
 };
 
 
-struct wmr200 {
+typedef struct wmr200 {
 	hid_device *dev;			// HIDAPI device handle
 
 	uchar buf[FRAME_SIZE];			// receive buffer

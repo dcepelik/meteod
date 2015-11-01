@@ -11,9 +11,9 @@
 #ifndef STRBUF_H
 #define STRBUF_H
 
+#include "common.h"
 #include <stdarg.h>
 
-#include "common.h"
 
 
 #define STRBUF_INIT_SIZE 1024
@@ -54,6 +54,7 @@ void strbuf_vprintf_at(strbuf *buf, size_t offset, char *format, va_list args);
 /*
  * Append string to the end of the buffer.
  */
+
 void strbuf_append(strbuf *buf, char *format, ...);
 
 

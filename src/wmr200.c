@@ -9,15 +9,15 @@
  */
 
 
-#include <stdlib.h>
+#include "wmr200.h"
+#include "wmr.h"
+#include "common.h"
+
 #include <signal.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
-
-#include "common.h"
-#include "wmr200.h"
-#include "macros.h"
 
 
 const char *LEVEL[] = {		// level (signal, battery)
@@ -447,7 +447,7 @@ wmr_open() {
 
 	wmr_global = wmr; // TODO
 
-	// some kind of wake-up command
+	// some kind of a wake-up command
 	uchar abracadabra[8] = { 0x20, 0x00, 0x08, 0x01, 0x00, 0x00, 0x00, 0x00 };
 	if (hid_write(wmr->dev, abracadabra, 8) != 8) {
 		DEBUG_MSG("Cannot initialize communication with WMR200\n");
@@ -497,3 +497,6 @@ wmr_set_handler(struct wmr200 *wmr, void (*handler)(struct wmr_reading *)) {
 	wh->next = wmr->handler;
 	wmr->handler = wh;
 }
+
+
+

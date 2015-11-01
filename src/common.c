@@ -1,11 +1,12 @@
+#include "common.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 
-#include "common.h"
 
-
-void *die(char *format, ...) {
+void *
+die(char *format, ...) {
 	va_list args;
 	va_start(args, format);
 
@@ -16,7 +17,8 @@ void *die(char *format, ...) {
 }
 
 
-void *malloc_safe(size_t size) {
+void *
+malloc_safe(size_t size) {
 	void *x = malloc(size);
 	if (!x) die("Cannot allocate %zu bytes of memory", size);
 
@@ -24,9 +26,13 @@ void *malloc_safe(size_t size) {
 }
 
 
-void *realloc_safe(void *x, size_t size) {
+void *
+realloc_safe(void *x, size_t size) {
 	x = realloc(x, size);
 	if (!x) die("Cannot reallocate memory (new size was %zu bytes)", size);
 
 	return x;
 }
+
+
+

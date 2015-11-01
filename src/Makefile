@@ -1,10 +1,10 @@
 .PHONY: clean
 
 CC=gcc
-CFLAGS=-c -Wall -std=gnu11 `pkg-config --cflags hidapi-libusb librrd` -DDEBUG
+CFLAGS=-c -Wall -std=gnu11 -DDEBUG `pkg-config --cflags hidapi-libusb librrd` -I.
 LDFLAGS=-Wall `pkg-config --libs hidapi-libusb librrd`
+OBJS=common.o wmr200.o wmrd.o strbuf.o loggers/rrd.o loggers/file.o
 PROG=wmrd
-OBJS=common.o wmr200.o wmrd.o file_logger.o rrd_logger.o strbuf.o
 
 ${PROG}: ${OBJS}
 	${CC} ${LDFLAGS} -o ${PROG} $^
@@ -12,6 +12,8 @@ ${PROG}: ${OBJS}
 %.o: %.c %.h
 	${CC} ${CFLAGS} -o $@ $<
 
+loggers/%.o: loggers/%.c loggers/%.h
+	${CC} ${CFLAGS} -o $@ $< 
 
 clean:
-	rm -rf -- ${PROG} *.o
+	rm -rf -- ${PROG} *.o loggers/*.o

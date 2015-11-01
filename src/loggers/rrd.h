@@ -1,5 +1,5 @@
-#ifndef RRD_LOGGER_H
-#define RRD_LOGGER_H
+#ifndef LOGGERS_RRD_H
+#define LOGGERS_RRD_H
 
 #include "wmr200.h"
 

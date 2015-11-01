@@ -1,14 +1,12 @@
-#include "rrd_logger.h"
-#include "wmr200.h"
-#include "time.h"
-#include "strbuf.h"
+#include "rrd.h"
 #include "common.h"
+#include "strbuf.h"
 
-#include <stdarg.h>
 #include <rrd.h>
+#include <time.h>
 
 
-#define RRD_ROOT_PATH "/var/wmrd/rrd"
+#define RRD_ROOT_PATH "/var/wmrd/rrd"			// TODO
 
 
 static void
@@ -91,7 +89,7 @@ log_baro(struct wmr_baro_reading *baro) {
 	strbuf_init(&data);
 	strbuf_append(
 		&data,
-		"%.1f:%.1f",
+		"%u:%u",
 		baro->pressure,
 		baro->alt_pressure
 	);
@@ -107,7 +105,7 @@ log_temp(struct wmr_temp_reading *temp) {
 	strbuf_init(&data);
 	strbuf_append(
 		&data,
-		"%.1f:%.1f:%.1f",
+		"%.1f:%u:%.1f",
 		temp->temp,
 		temp->humidity,
 		temp->dew_point
