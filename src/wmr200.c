@@ -1,11 +1,11 @@
-/**
- *  wmr200.c:
- *  Oregon Scientific WMR200 communication wrapper
+/*
+ * wmr200.c:
+ * Oregon Scientific WMR200 USB HID communication wrapper
  *
- *  Copyright (c) 2015 David Čepelík <cepelik@gymlit.cz>
+ * This software may be freely used and distributed according to the terms
+ * of the GNU GPL version 2 or 3. See LICENSE for more information.
  *
- *  This program may be licensed under GNU GPL version 2 or 3.
- *  See the LICENSE file for more information.
+ * Copyright (c) 2015 David Čepelík <cepelik@gymlit.cz>
  */
 
 

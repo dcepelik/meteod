@@ -1,3 +1,13 @@
+/*
+ * wmrdata.h:
+ * WMR data structures (readings encapsulation)
+ *
+ * This software may be freely used and distributed according to the terms
+ * of the GNU GPL version 2 or 3. See LICENSE for more information.
+ *
+ * Copyright (c) 2015 David Čepelík <cepelik@gymlit.cz>
+ */
+
 #ifndef WMRDATA_H
 #define WMRDATA_H
 

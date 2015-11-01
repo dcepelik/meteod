@@ -1,4 +1,19 @@
 #!/bin/bash
+#
+# rrd_create.sh:
+# Create RRD files for the RRD logger
+#
+# This software may be freely used and distributed according to the terms
+# of the GNU GPL version 2 or 3. See LICENSE for more information.
+#
+# Copyright (c) 2015 David Čepelík <cepelik@gymlit.cz>
+#
+# Note: you are free to change anything except for data source definitions (DS).
+#       Change to a DS may require additional changes be made to the RRD logger
+#       source file at loggers/rrd.c.
+#
+# Note: the order and number of DS's in a file matters!
+#
 
 
 rrdtool create wind.rrd \
@@ -62,3 +77,6 @@ for i in $(seq 0 10); do
 		RRA:MIN:0.5:10:480 \
 		RRA:MIN:0.5:60:480
 done
+
+
+
