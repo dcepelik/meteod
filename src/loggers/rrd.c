@@ -37,7 +37,7 @@ write_rrd(char *file_rel_path, strbuf *data) {
 
 
 static void
-log_wind(struct wmr_wind_reading *wind) {
+log_wind(wmr_wind *wind) {
 	strbuf data;
 	strbuf_init(&data);
 	strbuf_append(
@@ -53,7 +53,7 @@ log_wind(struct wmr_wind_reading *wind) {
 
 
 static void
-log_rain(struct wmr_rain_reading *rain) {
+log_rain(wmr_rain *rain) {
 	strbuf data;
 	strbuf_init(&data);
 	strbuf_append(
@@ -69,7 +69,7 @@ log_rain(struct wmr_rain_reading *rain) {
 
 
 static void
-log_uvi(struct wmr_uvi_reading *uvi) {
+log_uvi(wmr_uvi *uvi) {
 	strbuf data;
 	strbuf_init(&data);
 	strbuf_append(
@@ -84,7 +84,7 @@ log_uvi(struct wmr_uvi_reading *uvi) {
 
 
 static void
-log_baro(struct wmr_baro_reading *baro) {
+log_baro(wmr_baro *baro) {
 	strbuf data;
 	strbuf_init(&data);
 	strbuf_append(
@@ -100,7 +100,7 @@ log_baro(struct wmr_baro_reading *baro) {
 
 
 static void
-log_temp(struct wmr_temp_reading *temp) {
+log_temp(wmr_temp *temp) {
 	strbuf data;
 	strbuf_init(&data);
 	strbuf_append(
@@ -123,7 +123,7 @@ log_temp(struct wmr_temp_reading *temp) {
 
 
 void
-log_to_rrd(struct wmr_reading *reading, char *rrd_file) {
+log_to_rrd(wmr_reading *reading, char *rrd_file) {
 	switch (reading->type) {
 	case WIND_DATA:
 		log_wind(&reading->wind);

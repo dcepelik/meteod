@@ -6,7 +6,7 @@
 #include "loggers/rrd.h"
 
 
-struct wmr200 *wmr;
+wmr200 *wmr;
 
 
 static void
@@ -20,7 +20,7 @@ cleanup(int signum) {
 
 
 static void
-handler(struct wmr_reading *reading) {
+handler(wmr_reading *reading) {
 	log_to_file(reading, stdout);
 	log_to_rrd(reading, "/home/david/gymlit/tools/meteo/temp.rrd");
 }

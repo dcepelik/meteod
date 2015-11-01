@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 
-void log_to_file(struct wmr_reading *reading, FILE *stream);
+void log_to_file(wmr_reading *reading, FILE *stream);
 
 
 #endif

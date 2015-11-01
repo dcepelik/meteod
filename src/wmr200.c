@@ -20,12 +20,24 @@
 #include <sys/time.h>
 
 
+struct wmr_handler {
+	void (*handler)(wmr_reading *);
+	struct wmr_handler *next;
+};
+
+
+wmr200 *wmr_global; // TODO
+
+
+/******************** flag-to-string arrays ********************/
+
+
 const char *LEVEL[] = {		// level (signal, battery)
 	"ok",
 	"low"
 };
 
-const char *STATUS[] = {	// status of a sensor
+const char *STATUS[] = {
 	"ok",
 	"failed"
 };
@@ -50,14 +62,11 @@ const char *SENSOR_NAMES[1 + MAX_EXT_SENSORS] = {
 };
 
 
-struct wmr200 *wmr_global; // TODO
-
-
 /******************** sending and receiving data ********************/
 
 
 static uchar
-read_byte(struct wmr200 *wmr) {
+read_byte(wmr200 *wmr) {
 	if (wmr->buf_avail == 0) {
 		int ret = hid_read(wmr->dev, wmr->buf, FRAME_SIZE);
 
@@ -76,7 +85,7 @@ read_byte(struct wmr200 *wmr) {
 
 
 static void
-send_cmd_frame(struct wmr200 *wmr, uchar cmd) {
+send_cmd_frame(wmr200 *wmr, uchar cmd) {
 	uchar data[FRAME_SIZE] = { 0x01, cmd };
 	int ret = hid_write(wmr->dev, data, FRAME_SIZE);
 
@@ -88,7 +97,7 @@ send_cmd_frame(struct wmr200 *wmr, uchar cmd) {
 
 
 static void
-send_heartbeat(struct wmr200 *wmr) {
+send_heartbeat(wmr200 *wmr) {
 	DEBUG_MSG("Sending heartbeat to WMR200\n");
 	send_cmd_frame(wmr, HEARTBEAT);
 }
@@ -98,7 +107,7 @@ send_heartbeat(struct wmr200 *wmr) {
 
 
 static time_t
-get_reading_time_from_packet(struct wmr200 *wmr) {
+get_reading_time_from_packet(wmr200 *wmr) {
 	struct tm time = {
 		.tm_year	= (2000 + wmr->packet[6]) - 1900,
 		.tm_mon		= wmr->packet[5],
@@ -114,7 +123,7 @@ get_reading_time_from_packet(struct wmr200 *wmr) {
 
 
 static void
-invoke_handlers(struct wmr200 *wmr, struct wmr_reading *reading) {
+invoke_handlers(wmr200 *wmr, wmr_reading *reading) {
 	reading->time = get_reading_time_from_packet(wmr);
 
 	struct wmr_handler *handler = wmr->handler;
@@ -126,13 +135,13 @@ invoke_handlers(struct wmr200 *wmr, struct wmr_reading *reading) {
 
 
 static void
-process_wind_data(struct wmr200 *wmr, uchar *data) {
+process_wind_data(wmr200 *wmr, uchar *data) {
 	uint dir_flag		= LOW(data[7]);
 	float gust_speed	= (256 * LOW(data[10]) +      data[9])   / 10.0;
 	float avg_speed		= ( 16 * LOW(data[11]) + HIGH(data[10])) / 10.0;
 	float chill		= data[12]; // (data[12] - 32) / 1.8;
 
-	invoke_handlers(wmr, &(struct wmr_reading) {
+	invoke_handlers(wmr, &(wmr_reading) {
 		.type = WIND_DATA,
 		.wind = {
 			.dir = WIND_DIRECTION[dir_flag],
@@ -145,13 +154,13 @@ process_wind_data(struct wmr200 *wmr, uchar *data) {
 
 
 static void
-process_rain_data(struct wmr200 *wmr, uchar *data) {
+process_rain_data(wmr200 *wmr, uchar *data) {
 	float rate		= (256 * data[8]  +  data[7]) * 25.4;
 	float accum_hour	= (256 * data[10] +  data[9]) * 25.4;
 	float accum_24h		= (256 * data[12] + data[11]) * 25.4;
 	float accum_2007 	= (256 * data[14] + data[13]) * 25.4;
 
-	invoke_handlers(wmr, &(struct wmr_reading) {
+	invoke_handlers(wmr, &(wmr_reading) {
 		.type = RAIN_DATA,
 		.rain = {
 			.rate = rate,
@@ -164,10 +173,10 @@ process_rain_data(struct wmr200 *wmr, uchar *data) {
 
 
 static void
-process_uvi_data(struct wmr200 *wmr, uchar *data) {
+process_uvi_data(wmr200 *wmr, uchar *data) {
 	uint index = LOW(data[7]);
 
-	invoke_handlers(wmr, &(struct wmr_reading) {
+	invoke_handlers(wmr, &(wmr_reading) {
 		.type = UVI_DATA,
 		.uvi = {
 			.index = index
@@ -177,12 +186,12 @@ process_uvi_data(struct wmr200 *wmr, uchar *data) {
 
 
 static void
-process_baro_data(struct wmr200 *wmr, uchar *data) {
+process_baro_data(wmr200 *wmr, uchar *data) {
 	uint pressure		= 256 * LOW(data[8])  + data[7];
 	uint alt_pressure	= 256 * LOW(data[10]) + data[9];
 	uint forecast_flag	= HIGH(data[8]);
 
-	invoke_handlers(wmr, &(struct wmr_reading) {
+	invoke_handlers(wmr, &(wmr_reading) {
 		.type = BARO_DATA,
 		.baro = {
 			.pressure = pressure,
@@ -194,7 +203,7 @@ process_baro_data(struct wmr200 *wmr, uchar *data) {
 
 
 static void
-process_temp_data(struct wmr200 *wmr, uchar *data) {
+process_temp_data(wmr200 *wmr, uchar *data) {
 	int sensor_id = data[7] & 0xF;
 
 	// TODO
@@ -213,7 +222,7 @@ process_temp_data(struct wmr200 *wmr, uchar *data) {
 	if (HIGH(data[12]) == SIGN_NEGATIVE) dew_point = -dew_point;
 
 
-	invoke_handlers(wmr, &(struct wmr_reading) {
+	invoke_handlers(wmr, &(wmr_reading) {
 		.type = TEMP_DATA,
 		.temp = {
 			.humidity = humidity,
@@ -227,7 +236,7 @@ process_temp_data(struct wmr200 *wmr, uchar *data) {
 
 
 static void
-process_status_data(struct wmr200 *wmr, uchar *data) {
+process_status_data(wmr200 *wmr, uchar *data) {
 	uint wind_bat_flag		= NTH_BIT(0, data[4]);
 	uint temp_bat_flag		= NTH_BIT(1, data[4]);
 	uint rain_bat_flag		= NTH_BIT(4, data[5]);
@@ -241,7 +250,7 @@ process_status_data(struct wmr200 *wmr, uchar *data) {
 	uint rtc_signal_flag		= NTH_BIT(8, data[4]);
 
 
-	invoke_handlers(wmr, &(struct wmr_reading) {
+	invoke_handlers(wmr, &(wmr_reading) {
 		.type = STATUS_DATA,
 		.status = {
 			.wind_bat = LEVEL[wind_bat_flag],
@@ -261,7 +270,7 @@ process_status_data(struct wmr200 *wmr, uchar *data) {
 
 
 static void
-process_historic_data(struct wmr200 *wmr, uchar *data) {
+process_historic_data(wmr200 *wmr, uchar *data) {
 	process_rain_data(wmr, data);
 	process_wind_data(wmr, data + 13);
 	process_uvi_data(wmr, data + 20);
@@ -284,7 +293,7 @@ process_historic_data(struct wmr200 *wmr, uchar *data) {
 
 
 static uint
-verify_packet(struct wmr200 *wmr) {
+verify_packet(wmr200 *wmr) {
 	if (wmr->packet_len <= 2) {
 		return (-1);
 	}
@@ -308,7 +317,7 @@ verify_packet(struct wmr200 *wmr) {
 
 
 static void
-dispatch_packet(struct wmr200 *wmr) {
+dispatch_packet(wmr200 *wmr) {
 	switch (wmr->packet_type) {
 	case HISTORIC_DATA:
 		process_historic_data(wmr, wmr->packet);
@@ -345,7 +354,7 @@ dispatch_packet(struct wmr200 *wmr) {
 
 
 static void
-main_loop(struct wmr200 *wmr) {
+main_loop(wmr200 *wmr) {
 	while (1) {
 		wmr->packet_type = read_byte(wmr);
 
@@ -431,9 +440,9 @@ stop_timer() {
 /******************** interface  ********************/
 
 
-struct wmr200 *
+wmr200 *
 wmr_open() {
-	struct wmr200 *wmr = malloc_safe(sizeof(struct wmr200));
+	wmr200 *wmr = malloc_safe(sizeof(wmr200));
 
 	wmr->dev = hid_open(WMR200_VID, WMR200_PID, NULL);
 	if (wmr->dev == NULL) {
@@ -462,7 +471,7 @@ wmr_open() {
 
 
 void
-wmr_close(struct wmr200 *wmr) {
+wmr_close(wmr200 *wmr) {
 	stop_timer();
 
 	if (wmr->dev != NULL) {
@@ -485,13 +494,13 @@ wmr_end() {
 
 
 void
-wmr_main_loop(struct wmr200 *wmr) {
+wmr_main_loop(wmr200 *wmr) {
 	main_loop(wmr);
 }
 
 
 void
-wmr_set_handler(struct wmr200 *wmr, void (*handler)(struct wmr_reading *)) {
+wmr_set_handler(wmr200 *wmr, void (*handler)(wmr_reading *)) {
 	struct wmr_handler *wh = malloc_safe(sizeof(struct wmr_handler));
 	wh->handler = handler;
 	wh->next = wmr->handler;

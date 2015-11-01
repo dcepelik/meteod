@@ -11,7 +11,7 @@
 #define TEMPN_RRD	"temp%i.rrd"
 
 
-void log_to_rrd(struct wmr_reading *reading, char *rrd_file);
+void log_to_rrd(wmr_reading *reading, char *rrd_file);
 
 
 #endif
