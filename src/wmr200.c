@@ -20,6 +20,20 @@
 #include <sys/time.h>
 
 
+#define WMR200_VID	0x0FDE
+#define WMR200_PID	0xCA01
+
+#define FRAME_SIZE		8	// Bytes
+#define HEARTBEAT_INTERVAL	30	// seconds
+
+#define SIGN_POSITIVE		0x0
+#define SIGN_NEGATIVE		0x8
+
+#define NTH_BIT(n, val)		(((val) >> (n)) & 1)
+#define HIGH(b)			LOW((b) >> 4)
+#define LOW(b)			((b) &  0xF)
+
+
 struct wmr_handler {
 	void (*handler)(wmr_reading *);
 	struct wmr_handler *next;

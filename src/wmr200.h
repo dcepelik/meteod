@@ -1,11 +1,13 @@
 #ifndef WMR200_H
 #define WMR200_H
 
-#include "wmr.h"
 #include "common.h"
 
 #include <stdio.h>
 #include <hidapi.h>
+
+
+#define FRAME_SIZE		8
 
 
 typedef struct {

@@ -2,11 +2,6 @@
 #define MACROS_H
 
 
-#define WMR200_VID	0x0FDE
-#define WMR200_PID	0xCA01
-
-#define FRAME_SIZE		8	// Bytes
-#define HEARTBEAT_INTERVAL	30	// seconds
 #define MAX_EXT_SENSORS		10
 
 #define HEARTBEAT		0xD0
@@ -21,13 +16,6 @@
 #define REQUEST_HISTORIC_DATA	0xDA
 #define LOGGER_DATA_ERASE	0xDB
 #define COMMUNICATION_STOP	0xDF
-
-#define SIGN_POSITIVE		0x0
-#define SIGN_NEGATIVE		0x8
-
-#define NTH_BIT(n, val)		(((val) >> (n)) & 1)
-#define HIGH(b)			LOW((b) >> 4)
-#define LOW(b)			((b) &  0xF)
 
 
 #endif

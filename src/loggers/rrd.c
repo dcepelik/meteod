@@ -1,4 +1,5 @@
 #include "rrd.h"
+#include "wmr.h"
 #include "common.h"
 #include "strbuf.h"
 

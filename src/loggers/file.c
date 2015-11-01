@@ -1,4 +1,5 @@
 #include "file.h"
+#include "wmr.h"
 
 
 static void
