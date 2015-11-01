@@ -10,7 +10,7 @@
 
 
 #include "wmr200.h"
-#include "wmr.h"
+#include "wmrdata.h"
 #include "common.h"
 
 #include <signal.h>
@@ -20,14 +20,22 @@
 #include <sys/time.h>
 
 
-#define WMR200_VID	0x0FDE
-#define WMR200_PID	0xCA01
+#define VENDOR_ID		0x0FDE
+#define PRODUCT_ID		0xCA01
 
-#define FRAME_SIZE		8	// Bytes
-#define HEARTBEAT_INTERVAL	30	// seconds
+#define HEARTBEAT		0xD0
+#define HISTORIC_DATA_NOTIF	0xD1
+#define HISTORIC_DATA		0xD2
+#define REQUEST_HISTORIC_DATA	0xDA
+#define LOGGER_DATA_ERASE	0xDB
+#define COMMUNICATION_STOP	0xDF
+
+#define HEARTBEAT_INTERVAL	30 // s
+#define MAX_EXT_SENSORS		10
 
 #define SIGN_POSITIVE		0x0
 #define SIGN_NEGATIVE		0x8
+
 
 #define NTH_BIT(n, val)		(((val) >> (n)) & 1)
 #define HIGH(b)			LOW((b) >> 4)
@@ -82,9 +90,9 @@ const char *SENSOR_NAMES[1 + MAX_EXT_SENSORS] = {
 static uchar
 read_byte(wmr200 *wmr) {
 	if (wmr->buf_avail == 0) {
-		int ret = hid_read(wmr->dev, wmr->buf, FRAME_SIZE);
+		int ret = hid_read(wmr->dev, wmr->buf, WMR200_FRAME_SIZE);
 
-		if (ret != FRAME_SIZE) {
+		if (ret != WMR200_FRAME_SIZE) {
 			fprintf(stderr, "hid_read: cannot read frame, return was %i\n", ret);
 			exit(1);
 		}
@@ -100,10 +108,10 @@ read_byte(wmr200 *wmr) {
 
 static void
 send_cmd_frame(wmr200 *wmr, uchar cmd) {
-	uchar data[FRAME_SIZE] = { 0x01, cmd };
-	int ret = hid_write(wmr->dev, data, FRAME_SIZE);
+	uchar data[WMR200_FRAME_SIZE] = { 0x01, cmd };
+	int ret = hid_write(wmr->dev, data, WMR200_FRAME_SIZE);
 
-	if (ret != FRAME_SIZE) {
+	if (ret != WMR200_FRAME_SIZE) {
 		fprintf(stderr, "hid_write: cannot send %02x command frame, return was %i", cmd, ret);
 		exit(1);
 	}
@@ -156,7 +164,7 @@ process_wind_data(wmr200 *wmr, uchar *data) {
 	float chill		= data[12]; // (data[12] - 32) / 1.8;
 
 	invoke_handlers(wmr, &(wmr_reading) {
-		.type = WIND_DATA,
+		.type = WMR_WIND,
 		.wind = {
 			.dir = WIND_DIRECTION[dir_flag],
 			.gust_speed = gust_speed,
@@ -175,7 +183,7 @@ process_rain_data(wmr200 *wmr, uchar *data) {
 	float accum_2007 	= (256 * data[14] + data[13]) * 25.4;
 
 	invoke_handlers(wmr, &(wmr_reading) {
-		.type = RAIN_DATA,
+		.type = WMR_RAIN,
 		.rain = {
 			.rate = rate,
 			.accum_hour = accum_hour,
@@ -191,7 +199,7 @@ process_uvi_data(wmr200 *wmr, uchar *data) {
 	uint index = LOW(data[7]);
 
 	invoke_handlers(wmr, &(wmr_reading) {
-		.type = UVI_DATA,
+		.type = WMR_UVI,
 		.uvi = {
 			.index = index
 		}
@@ -206,7 +214,7 @@ process_baro_data(wmr200 *wmr, uchar *data) {
 	uint forecast_flag	= HIGH(data[8]);
 
 	invoke_handlers(wmr, &(wmr_reading) {
-		.type = BARO_DATA,
+		.type = WMR_BARO,
 		.baro = {
 			.pressure = pressure,
 			.alt_pressure = alt_pressure,
@@ -237,7 +245,7 @@ process_temp_data(wmr200 *wmr, uchar *data) {
 
 
 	invoke_handlers(wmr, &(wmr_reading) {
-		.type = TEMP_DATA,
+		.type = WMR_TEMP,
 		.temp = {
 			.humidity = humidity,
 			.heat_index = heat_index,
@@ -265,7 +273,7 @@ process_status_data(wmr200 *wmr, uchar *data) {
 
 
 	invoke_handlers(wmr, &(wmr_reading) {
-		.type = STATUS_DATA,
+		.type = WMR_STATUS,
 		.status = {
 			.wind_bat = LEVEL[wind_bat_flag],
 			.temp_bat = LEVEL[temp_bat_flag],
@@ -337,27 +345,27 @@ dispatch_packet(wmr200 *wmr) {
 		process_historic_data(wmr, wmr->packet);
 		break;
 
-	case WIND_DATA:
+	case WMR_WIND:
 		process_wind_data(wmr, wmr->packet);
 		break;
 
-	case RAIN_DATA:
+	case WMR_RAIN:
 		process_rain_data(wmr, wmr->packet);
 		break;
 
-	case UVI_DATA:
+	case WMR_UVI:
 		process_uvi_data(wmr, wmr->packet);
 		break;
 
-	case BARO_DATA:
+	case WMR_BARO:
 		process_baro_data(wmr, wmr->packet);
 		break;
 
-	case TEMP_DATA:
+	case WMR_TEMP:
 		process_temp_data(wmr, wmr->packet);
 		break;
 
-	case STATUS_DATA:
+	case WMR_STATUS:
 		process_status_data(wmr, wmr->packet);
 		break;
 
@@ -458,7 +466,7 @@ wmr200 *
 wmr_open() {
 	wmr200 *wmr = malloc_safe(sizeof(wmr200));
 
-	wmr->dev = hid_open(WMR200_VID, WMR200_PID, NULL);
+	wmr->dev = hid_open(VENDOR_ID, PRODUCT_ID, NULL);
 	if (wmr->dev == NULL) {
 		DEBUG_MSG("hid_open(): cannot connect to WRM200\n");
 		return NULL;

@@ -1,5 +1,5 @@
 #include "rrd.h"
-#include "wmr.h"
+#include "wmrdata.h"
 #include "common.h"
 #include "strbuf.h"
 
@@ -126,23 +126,23 @@ log_temp(wmr_temp *temp) {
 void
 log_to_rrd(wmr_reading *reading, char *rrd_file) {
 	switch (reading->type) {
-	case WIND_DATA:
+	case WMR_WIND:
 		log_wind(&reading->wind);
 		break;
 
-	case RAIN_DATA:
+	case WMR_RAIN:
 		log_rain(&reading->rain);
 		break;
 
-	case UVI_DATA:
+	case WMR_UVI:
 		log_uvi(&reading->uvi);
 		break;
 
-	case BARO_DATA:
+	case WMR_BARO:
 		log_baro(&reading->baro);
 		break;
 
-	case TEMP_DATA:
+	case WMR_TEMP:
 		log_temp(&reading->temp);
 		break;
 	}

@@ -1,5 +1,5 @@
 #include "file.h"
-#include "wmr.h"
+#include "wmrdata.h"
 
 
 static void
@@ -66,27 +66,27 @@ log_to_file(wmr_reading *reading, FILE *stream) {
 	fprintf(stream, "reading %li {\n", reading->time);
 
 	switch (reading->type) {
-	case WIND_DATA:
+	case WMR_WIND:
 		log_wind(&reading->wind, stream);
 		break;
 
-	case RAIN_DATA:
+	case WMR_RAIN:
 		log_rain(&reading->rain, stream);
 		break;
 
-	case UVI_DATA:
+	case WMR_UVI:
 		log_uvi(&reading->uvi, stream);
 		break;
 
-	case BARO_DATA:
+	case WMR_BARO:
 		log_baro(&reading->baro, stream);
 		break;
 
-	case TEMP_DATA:
+	case WMR_TEMP:
 		log_temp(&reading->temp, stream);
 		break;
 
-	case STATUS_DATA:
+	case WMR_STATUS:
 		log_status(&reading->status, stream);
 		break;
 	}
