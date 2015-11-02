@@ -3,7 +3,7 @@
 CC=gcc
 CFLAGS=-c -Wall -std=gnu11 -DDEBUG `pkg-config --cflags hidapi-libusb librrd` -I.
 LDFLAGS=-Wall `pkg-config --libs hidapi-libusb librrd`
-OBJS=common.o wmr200.o wmrd.o strbuf.o loggers/rrd.o loggers/file.o
+OBJS=common.o wmr200.o wmrd.o strbuf.o server.o loggers/file.o loggers/rrd.o
 PROG=wmrd
 
 ${PROG}: ${OBJS}

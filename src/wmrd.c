@@ -13,6 +13,7 @@
 #include <signal.h>
 
 #include "wmr200.h"
+#include "server.h"
 #include "loggers/file.h"
 #include "loggers/rrd.h"
 
@@ -34,6 +35,7 @@ static void
 handler(wmr_reading *reading) {
 	log_to_file(reading, stdout);
 	log_to_rrd(reading, "/home/david/gymlit/tools/meteo/temp.rrd");
+	// log to server
 }
 
 

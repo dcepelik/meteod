@@ -19,6 +19,7 @@
 
 
 #define WMR200_FRAME_SIZE		8
+#define WMR200_MAX_TEMP_SENSORS		10
 
 
 struct wmr_handler;

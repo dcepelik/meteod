@@ -31,7 +31,6 @@
 #define COMMUNICATION_STOP	0xDF
 
 #define HEARTBEAT_INTERVAL	30 // s
-#define MAX_EXT_SENSORS		10
 
 #define SIGN_POSITIVE		0x0
 #define SIGN_NEGATIVE		0x8
@@ -77,7 +76,7 @@ const char *WIND_DIRECTION[] = {
 	"W", "WNW", "NW", "NNW"
 };
 
-const char *SENSOR_NAMES[1 + MAX_EXT_SENSORS] = {
+const char *SENSOR_NAMES[1 + WMR200_MAX_TEMP_SENSORS] = {
 	"indoor",
 	"1", "2", "3", "4", "5",
 	"6", "7", "8", "9", "10"
@@ -305,7 +304,7 @@ process_historic_data(wmr200 *wmr, uchar *data) {
 	process_temp_data(wmr, data + 26);
 
 	uint ext_sensor_count = data[32];
-	if (ext_sensor_count > MAX_EXT_SENSORS) {
+	if (ext_sensor_count > WMR200_MAX_TEMP_SENSORS) {
 		fprintf(stderr, "Too many external sensors\n");
 		exit(1);
 	}
