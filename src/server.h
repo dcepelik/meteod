@@ -12,17 +12,19 @@
 #define SERVER_H
 
 
-struct server {
+struct latest_data;
+
+typedef struct {
 	
-};
+} wmr_server;
 
 
 void
-server_start(struct server *srv);
+server_start(wmr_server *srv);
 
 
 void
-server_stop(struct server *srv);
+server_stop(wmr_server *srv);
 
 
 #endif

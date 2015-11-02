@@ -12,4 +12,11 @@
 #include "server.h"
 
 
-
+struct latest_data {
+	wmr_wind wind;
+	wmr_rain rain;
+	wmr_uvi uvi;
+	wmr_baro baro;
+	wmr_temp temp;
+	wmr_status status;
+};

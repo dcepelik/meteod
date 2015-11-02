@@ -23,6 +23,8 @@
 
 
 typedef struct {
+	time_t time;
+
 	const char *dir;	// wind direction, see `wmr200.c'
 	float gust_speed;	// gust speed, m/s
 	float avg_speed;	// average speed, m/s
@@ -31,6 +33,8 @@ typedef struct {
 
 
 typedef struct {
+	time_t time;
+
 	float rate;		// immediate rain rate, mm/m^2
 	float accum_hour;	// rain last hour, mm/m^2
 	float accum_24h;	// rain 24 hours (without rain_hour), mm/m^2
@@ -39,11 +43,14 @@ typedef struct {
 
 
 typedef struct {
+	time_t time;
 	uint index;		// "UV index", value in range 0..15
 } wmr_uvi;
 
 
 typedef struct {
+	time_t time;
+
 	uint pressure;		// immediate pressure, hPa
 	uint alt_pressure;	// TODO
 	const char *forecast;	// name of "forecast icon", see `wmr200.c'
@@ -51,6 +58,8 @@ typedef struct {
 
 
 typedef struct {
+	time_t time;
+
 	uint sensor_id;		// ID in range 0..MAX_EXT_SENSORS, 0 = console
 	uint humidity;		// relative humidity, percent
 	uint heat_index;	// value 0..4, 0 = undefined (temp too low)
@@ -60,6 +69,8 @@ typedef struct {
 
 
 typedef struct {
+	time_t time;
+
 	const char *wind_bat;		// battery levels, see `wmr200.c'
 	const char *temp_bat;
 	const char *rain_bat;
@@ -76,7 +87,6 @@ typedef struct {
 
 typedef struct {
 	uint type;
-	time_t time;
 	union {
 		wmr_wind wind;
 		wmr_rain rain;

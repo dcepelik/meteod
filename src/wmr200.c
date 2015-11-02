@@ -146,8 +146,6 @@ get_reading_time_from_packet(wmr200 *wmr) {
 
 static void
 invoke_handlers(wmr200 *wmr, wmr_reading *reading) {
-	reading->time = get_reading_time_from_packet(wmr);
-
 	struct wmr_handler *handler = wmr->handler;
 	while (handler != NULL) {
 		handler->handler(reading);
@@ -166,6 +164,7 @@ process_wind_data(wmr200 *wmr, uchar *data) {
 	invoke_handlers(wmr, &(wmr_reading) {
 		.type = WMR_WIND,
 		.wind = {
+			.time = get_reading_time_from_packet(wmr),
 			.dir = WIND_DIRECTION[dir_flag],
 			.gust_speed = gust_speed,
 			.avg_speed = avg_speed,
@@ -185,6 +184,7 @@ process_rain_data(wmr200 *wmr, uchar *data) {
 	invoke_handlers(wmr, &(wmr_reading) {
 		.type = WMR_RAIN,
 		.rain = {
+			.time = get_reading_time_from_packet(wmr),
 			.rate = rate,
 			.accum_hour = accum_hour,
 			.accum_24h = accum_24h,
@@ -201,6 +201,7 @@ process_uvi_data(wmr200 *wmr, uchar *data) {
 	invoke_handlers(wmr, &(wmr_reading) {
 		.type = WMR_UVI,
 		.uvi = {
+			.time = get_reading_time_from_packet(wmr),
 			.index = index
 		}
 	});
@@ -216,6 +217,7 @@ process_baro_data(wmr200 *wmr, uchar *data) {
 	invoke_handlers(wmr, &(wmr_reading) {
 		.type = WMR_BARO,
 		.baro = {
+			.time = get_reading_time_from_packet(wmr),
 			.pressure = pressure,
 			.alt_pressure = alt_pressure,
 			.forecast = FORECAST[forecast_flag]
@@ -247,6 +249,7 @@ process_temp_data(wmr200 *wmr, uchar *data) {
 	invoke_handlers(wmr, &(wmr_reading) {
 		.type = WMR_TEMP,
 		.temp = {
+			.time = get_reading_time_from_packet(wmr),
 			.humidity = humidity,
 			.heat_index = heat_index,
 			.temp = temp,
@@ -275,6 +278,8 @@ process_status_data(wmr200 *wmr, uchar *data) {
 	invoke_handlers(wmr, &(wmr_reading) {
 		.type = WMR_STATUS,
 		.status = {
+			.time = get_reading_time_from_packet(wmr),
+
 			.wind_bat = LEVEL[wind_bat_flag],
 			.temp_bat = LEVEL[temp_bat_flag],
 			.rain_bat = LEVEL[rain_bat_flag],
