@@ -64,9 +64,9 @@ rrdtool create baro.rrd \
 for i in $(seq 0 10); do
 	rrdtool create temp$i.rrd \
 		--step 180 \
-		DS:temp:GAUGE:360:0:100 \
-		DS:humidity:GAUGE:360:0:100 \
-		DS:dewpoint:GAUGE:360:0:100 \
+		DS:temp:GAUGE:360:-100:100 \
+		DS:humidity:GAUGE:360:-100:100 \
+		DS:dewpoint:GAUGE:360:-100:100 \
 		RRA:AVERAGE:0.5:1:480 \
 		RRA:AVERAGE:0.5:10:480 \
 		RRA:AVERAGE:0.5:60:480 \

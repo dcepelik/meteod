@@ -42,3 +42,9 @@ a.active {
 img {
 	margin: 0 auto;
 }
+
+p.warning {
+	background: pink;
+	border-radius: 15px;
+	padding: 20px;
+}
