@@ -226,7 +226,7 @@ process_baro_data(wmr200 *wmr, uchar *data) {
 
 static void
 process_temp_data(wmr200 *wmr, uchar *data) {
-	int sensor_id = data[7] & 0xF;
+	int sensor_id = LOW(data[7]);
 
 	// TODO
 	if (sensor_id > 1) {
