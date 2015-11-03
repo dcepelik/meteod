@@ -20,6 +20,7 @@
 #define WMR_BARO		0xD6
 #define WMR_TEMP		0xD7
 #define WMR_STATUS		0xD9
+#define WMR_META		0xFF		// system meta-packet
 
 
 typedef struct {
@@ -86,6 +87,18 @@ typedef struct {
 
 
 typedef struct {
+	time_t time;
+
+	uint num_packets;
+	uint num_failed;
+	uint num_frames;
+	float error_rate;
+	ulong num_bytes;
+	time_t latest_packet;
+} wmr_meta;
+
+
+typedef struct {
 	uint type;
 	union {
 		wmr_wind wind;
@@ -94,6 +107,7 @@ typedef struct {
 		wmr_baro baro;
 		wmr_temp temp;
 		wmr_status status;
+		wmr_meta meta;
 	};
 } wmr_reading;
 

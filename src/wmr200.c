@@ -13,8 +13,9 @@
 #include "wmrdata.h"
 #include "common.h"
 
-#include <signal.h>
 #include <stdio.h>
+#include <signal.h>
+#include <string.h>
 #include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
@@ -90,6 +91,7 @@ static uchar
 read_byte(wmr200 *wmr) {
 	if (wmr->buf_avail == 0) {
 		int ret = hid_read(wmr->dev, wmr->buf, WMR200_FRAME_SIZE);
+		wmr->meta.num_frames++;
 
 		if (ret != WMR200_FRAME_SIZE) {
 			fprintf(stderr, "hid_read: cannot read frame, return was %i\n", ret);
@@ -100,6 +102,7 @@ read_byte(wmr200 *wmr) {
 		wmr->buf_pos = 1;
 	}
 
+	wmr->meta.num_bytes++;
 	wmr->buf_avail--;
 	return wmr->buf[wmr->buf_pos++];
 }
@@ -315,6 +318,18 @@ process_historic_data(wmr200 *wmr, uchar *data) {
 }
 
 
+static void
+emit_meta_packet(wmr200 *wmr) {
+	wmr->meta.time = time(NULL);
+	wmr->meta.error_rate = wmr->meta.num_failed / wmr->meta.num_packets;
+
+	invoke_handlers(wmr, &(wmr_reading) {
+		.type = WMR_META,
+		.meta = wmr->meta
+	});
+}
+
+
 /******************** packet processing ********************/
 
 
@@ -418,12 +433,16 @@ act_on_packet_type:
 			wmr->packet[i] = read_byte(wmr);
 		}
 
+		wmr->meta.num_packets++;
+
 		if (verify_packet(wmr) != 0) {
 			fprintf(stderr, "Packet incorrect, dropping\n");
+			wmr->meta.num_failed++;
 			continue;
 		}
 
 		DEBUG_MSG("Packet 0x%02X (%u bytes)\n", wmr->packet_type, wmr->packet_len);
+		wmr->meta.latest_packet = time(NULL);
 		dispatch_packet(wmr);
 
 		free(wmr->packet);
@@ -437,6 +456,7 @@ act_on_packet_type:
 static void
 alrm_handler(int signum) {
 	send_heartbeat(wmr_global);
+	emit_meta_packet(wmr_global);
 }
 
 
@@ -479,6 +499,7 @@ wmr_open() {
 	wmr->packet = NULL;
 	wmr->buf_avail = wmr->buf_pos = 0;
 	wmr->handler = NULL;
+	memset(&wmr->meta, 0, sizeof(wmr_meta));
 
 	wmr_global = wmr; // TODO
 

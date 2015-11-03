@@ -34,6 +34,8 @@ typedef struct {
 	uchar *packet;			// packet being processed
 	uchar packet_type;
 	uint packet_len;
+	
+	wmr_meta meta;			// system meta-packet in making
 
 	struct wmr_handler *handler;	// handlers
 } wmr200;

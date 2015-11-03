@@ -13,7 +13,6 @@
 #include <signal.h>
 
 #include "wmr200.h"
-#include "server.h"
 #include "loggers/file.h"
 #include "loggers/rrd.h"
 #include "loggers/server.h"
