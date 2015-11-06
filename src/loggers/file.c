@@ -55,13 +55,11 @@ log_baro(wmr_baro *baro, FILE *stream) {
 
 static void
 log_temp(wmr_temp *temp, FILE *stream) {
-	uint id = temp->sensor_id;
-
 	fprintf(stream, "temp%u %li {\n", temp->sensor_id, temp->time);
-	fprintf(stream, "\thumidity: %u\n", id, temp->humidity);
-	fprintf(stream, "\theat_index: %u\n", id, temp->heat_index);
-	fprintf(stream, "\ttemp: %.1f\n", id, temp->temp);
-	fprintf(stream, "\tdew_point: %.1f\n", id, temp->dew_point);
+	fprintf(stream, "\thumidity: %u\n", temp->humidity);
+	fprintf(stream, "\theat_index: %u\n", temp->heat_index);
+	fprintf(stream, "\ttemp: %.1f\n", temp->temp);
+	fprintf(stream, "\tdew_point: %.1f\n", temp->dew_point);
 	fprintf(stream, "}\n\n");
 }
 
@@ -94,7 +92,7 @@ log_meta(wmr_meta *meta, FILE *stream) {
 	fprintf(stream, "num_failed: %u", meta->num_failed);
 	fprintf(stream, "num_frames: %u", meta->num_frames);
 	fprintf(stream, "error_rate: %.1f", meta->error_rate);
-	fprintf(stream, "num_bytes: %u", meta->num_bytes);
+	fprintf(stream, "num_bytes: %li", meta->num_bytes);
 	fprintf(stream, "latest_packet: %li", meta->latest_packet);
 
 	fprintf(stream, "}\n\n");
