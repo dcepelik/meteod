@@ -20,6 +20,8 @@
 #include <time.h>
 #include <sys/time.h>
 
+#include <hidapi.h>
+
 
 #define VENDOR_ID		0x0FDE
 #define PRODUCT_ID		0xCA01
@@ -389,7 +391,7 @@ dispatch_packet(wmr200 *wmr) {
 		break;
 
 	default:
-		DEBUG_MSG("Ignoring unknown packet %u\n", wmr->packet_type);
+		DEBUG_MSG("Ignoring unknown packet 0x%02X\n", wmr->packet_type);
 	}
 }
 

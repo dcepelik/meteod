@@ -11,8 +11,8 @@
 
 #include "rrd.h"
 #include "wmrdata.h"
-#include "common.h"
 #include "strbuf.h"
+#include "common.h"
 
 #include <rrd.h>
 #include <time.h>

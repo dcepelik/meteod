@@ -10,6 +10,7 @@
 
 
 #include "server.h"
+#include "strbuf.h"
 
 
 void
@@ -39,4 +40,23 @@ log_to_server(wmr_server *srv, wmr_reading *reading) {
 		srv->data.status = reading->status;
 		break;
 	}
+}
+
+
+char *
+get_response(wmr_server *server, char *query) {
+	strbuf buf;
+	strbuf_init(&buf);
+
+	
+
+	strbuf_free(&buf);
+}
+
+
+void
+server_start(wmr_server *server) {
+	// wait for connections
+	// when a connection is accepted, go ahead and process the query
+	// go again, baby
 }
