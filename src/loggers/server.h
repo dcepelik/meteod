@@ -1,5 +1,5 @@
 /*
- * server.h:
+ * loggers/server.h:
  * Server component of the WMR daemon
  *
  * This software may be freely used and distributed according to the terms

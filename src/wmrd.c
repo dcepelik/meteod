@@ -41,6 +41,11 @@ handler(wmr_reading *reading) {
 
 int
 main(int argc, const char *argv[]) {
+	wmr_server srv;
+
+	server_start(&srv);
+
+	/*
 	struct sigaction sa;
 	sa.sa_handler = cleanup;
 	sigaction(SIGTERM, &sa, NULL); // TODO
@@ -60,6 +65,7 @@ main(int argc, const char *argv[]) {
 
 	wmr_close(wmr);
 	wmr_end();
+	*/
 
 	return (0);
 }

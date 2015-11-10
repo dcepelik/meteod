@@ -1,5 +1,5 @@
 /*
- * server.c:
+ * loggers/server.c:
  * Server component of the WMR daemon
  *
  * This software may be freely used and distributed according to the terms
@@ -11,6 +11,21 @@
 
 #include "server.h"
 #include "strbuf.h"
+#include "serialize.h"
+
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <err.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <rpc/xdr.h>
+
+
+#define ARRAY_ELEM		unsigned char
+#define ARRAY_PREFIX(x)		byte_##x
+#include "array.h"
 
 
 void
@@ -43,20 +58,48 @@ log_to_server(wmr_server *srv, wmr_reading *reading) {
 }
 
 
-char *
-get_response(wmr_server *server, char *query) {
-	strbuf buf;
-	strbuf_init(&buf);
-
-	
-
-	strbuf_free(&buf);
+void
+send_latest_data(wmr_server *server) {
 }
 
 
 void
 server_start(wmr_server *server) {
-	// wait for connections
-	// when a connection is accepted, go ahead and process the query
-	// go again, baby
+	int fd, newsock;
+
+	struct sockaddr_in in = {
+		.sin_family = AF_INET,
+		.sin_port = htons(20892),
+		.sin_addr.s_addr = htonl(INADDR_ANY),
+	};
+
+	if ((fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+		err(1, "socket");
+	}
+
+	if (bind(fd, (struct sockaddr *) &in, sizeof(in)) == -1) {
+		err(1, "bind");
+	}
+
+	if (listen(fd, SOMAXCONN) == -1) {
+		err(1, "listen");
+	}
+
+
+	struct byte_array arr;
+	byte_array_init(&arr);
+	serialize_int(&arr, 10);
+
+	return;
+	for (;;) {
+		if ((newsock = accept(fd, NULL, 0)) == -1) {
+			err(1, "accept");
+		}
+
+		if (write(newsock, arr.elems, arr.size) != arr.size) {
+			fprintf(stderr, "Cannot send %zu bytes over nework\n", arr.size);
+		}
+
+		(void)close(newsock);
+	}
 }

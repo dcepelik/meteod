@@ -26,6 +26,9 @@ typedef unsigned char		uchar;
 #endif
 
 
+#define MAX(a, b)		((a) > (b) ? (a) : (b))
+
+
 void *die(char *format, ...);
 
 

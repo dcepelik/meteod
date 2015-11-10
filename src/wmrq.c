@@ -73,6 +73,6 @@ main(int argc, const char *argv[]) {
 	}
 
 
-	close(fd);
+	(void)close(fd);
 	return (0);
 }
