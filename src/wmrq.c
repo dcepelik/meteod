@@ -19,24 +19,27 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#define ARRAY_ELEM		unsigned char
+#define ARRAY_PREFIX(x)		byte_##x
+
 
 #define BUF_LEN		256	/* B */
 #define DEFAULT_PORT	20892
+#include "array.h"
 
 
 int
 main(int argc, const char *argv[]) {
-	int fd, ret;
-	const char *hostname, *portstr, *query;
+	int fd, ret, n;
+	const char *hostname, *portstr;
 	struct addrinfo hints;
 	struct addrinfo *srvinfo, *rp;
 
 	if (argc < 3)
-		errx(1, "usage: %s <hostname> <portstr> <query>\n", argv[0]);
+		errx(1, "usage: %s <hostname> <portstr>\n", argv[0]);
 
 	hostname = argv[1];
 	portstr = argv[2];
-	query = argv[3];
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;
@@ -67,11 +70,20 @@ main(int argc, const char *argv[]) {
 
 	fprintf(stderr, "Connected to '%s'\n", hostname);
 
+	/*
 	uint query_len = strlen(query);
 	if (write(fd, query, query_len) != query_len) {
 		errx(1, "write: cannot write %u bytes\n", query_len);
 	}
 
+	struct byte_array arr;
+	byte_array_init(&arr);
+
+	unsigned char buf[BUF_LEN];
+	while ((n = read(fd, &buf, sizeof(buf))) > 0) {
+		byte_array_push_n(&arr, &buf[0], n);
+	}
+	*/
 
 	(void)close(fd);
 	return (0);

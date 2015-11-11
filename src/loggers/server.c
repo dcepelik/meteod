@@ -90,16 +90,18 @@ server_start(wmr_server *server) {
 	byte_array_init(&arr);
 	serialize_int(&arr, 10);
 
-	return;
 	for (;;) {
 		if ((newsock = accept(fd, NULL, 0)) == -1) {
 			err(1, "accept");
 		}
+
+		fprintf(stderr, "Accepted client\n");
 
 		if (write(newsock, arr.elems, arr.size) != arr.size) {
 			fprintf(stderr, "Cannot send %zu bytes over nework\n", arr.size);
 		}
 
 		(void)close(newsock);
+		break;
 	}
 }

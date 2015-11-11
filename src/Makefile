@@ -1,9 +1,21 @@
 .PHONY: clean
 
 CC=gcc
-CFLAGS=-c -Wall -std=gnu11 -DDEBUG `pkg-config --cflags hidapi-libusb librrd` -I. --pedantic -g
-LDFLAGS=-Wall `pkg-config --libs hidapi-libusb librrd`
-OBJS=common.o wmr200.o strbuf.o serialize.o loggers/file.o loggers/rrd.o loggers/server.o
+
+CFLAGS=-c \
+	-std=gnu11 \
+	`pkg-config --cflags hidapi-libusb librrd` \
+	-Wall --pedantic -g \
+	-Wno-unused-function \
+	-DDEBUG \
+	-I.
+
+LDFLAGS=`pkg-config --libs hidapi-libusb librrd` \
+	-Wall
+
+OBJS=common.o wmr200.o strbuf.o serialize.o \
+	loggers/file.o loggers/rrd.o loggers/server.o
+
 BINS=wmrd wmrq
 
 
@@ -12,7 +24,7 @@ all: ${BINS}
 wmrd: wmrd.o ${OBJS}
 	${CC} ${LDFLAGS} -o $@ $^
 
-wmrq: wmrq.o
+wmrq: wmrq.o common.o
 	${CC} ${LDFLAGS} -o $@ $^
 
 
