@@ -24,12 +24,15 @@ all: ${BINS}
 wmrd: wmrd.o ${OBJS}
 	${CC} ${LDFLAGS} -o $@ $^
 
-wmrq: wmrq.o common.o
+wmrq: wmrq.o common.o serialize.o loggers/file.o strbuf.o
 	${CC} ${LDFLAGS} -o $@ $^
 
 
 
 wmr200.o: wmr200.c wmrdata.h common.h
+	${CC} ${CFLAGS} -o $@ $<
+
+serialize.o: serialize.c serialize.h wmrdata.h strbuf.h common.h
 	${CC} ${CFLAGS} -o $@ $<
 
 loggers/file.o: loggers/file.c loggers/file.h wmrdata.h
@@ -49,4 +52,4 @@ loggers/%.o: loggers/%.c loggers/%.h
 
 
 clean:
-	rm -rf -- ${BINS} ${OBJS}
+	rm -rf -- ${BINS} ${OBJS} wmrq.o wmrd.o
