@@ -19,6 +19,7 @@
 #include <sys/socket.h>
 
 #include "wmrdata.h"
+#include "serialize.h"
 #include "loggers/file.h"
 
 #define ARRAY_ELEM		unsigned char
@@ -81,18 +82,10 @@ main(int argc, const char *argv[]) {
 		byte_array_push_n(&arr, &buf[0], n);
 	}
 
-	fprintf(stderr, "Buffer contents: ");
-	for (uint i = 0; i < arr.size; i++) {
-		fprintf(stderr, "%03u ", arr.elems[i]);
-	}
-	fprintf(stderr, "\n");
+	fprintf(stderr, "Read %zu bytes\n", arr.size);
 
-	wmr_wind deserialize_wind(struct byte_array *arr);
-
-	wmr_reading reading = {
-		.type = WMR_WIND,
-		.wind = deserialize_wind(&arr)
-	};
+	wmr_reading reading;
+	deserialize_reading(&arr, &reading);
 
 	log_to_file(&reading, stdout);
 

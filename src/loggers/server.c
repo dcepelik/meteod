@@ -21,6 +21,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <rpc/xdr.h>
+#include "time.h"
 
 
 #define ARRAY_ELEM		unsigned char
@@ -85,15 +86,25 @@ server_start(wmr_server *server) {
 		err(1, "listen");
 	}
 
-	void serialize_wind(struct byte_array *arr, wmr_wind *w);
+	wmr_reading reading = {
+		.type = WMR_TEMP,
+		.temp = {
+			.time = time(NULL),
+			.sensor_id = 42,
+			.humidity = 77,
+			.heat_index = 2,
+			.temp = 1.445,
+			.dew_point = 17.222228,
+		}
+	};
 
 	struct byte_array arr;
 	byte_array_init(&arr);
-	wmr_wind wind = {
-		.time = 123,
-		.dir = "NNW"
-	};
-	serialize_wind(&arr, &wind);
+
+	serialize_reading(&arr, &reading);
+
+	fprintf(stderr, "Server array size: %zu\n", arr.size);
+
 
 	for (;;) {
 		if ((newsock = accept(fd, NULL, 0)) == -1) {
