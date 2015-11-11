@@ -29,7 +29,7 @@ typedef struct {
 	const char *dir;	// wind direction, see `wmr200.c'
 	float gust_speed;	// gust speed, m/s
 	float avg_speed;	// average speed, m/s
-	float chill;		// TODO
+	float chill;		// TODO what's this?
 } wmr_wind;
 
 

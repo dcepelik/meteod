@@ -85,10 +85,15 @@ server_start(wmr_server *server) {
 		err(1, "listen");
 	}
 
+	void serialize_wind(struct byte_array *arr, wmr_wind *w);
 
 	struct byte_array arr;
 	byte_array_init(&arr);
-	serialize_int(&arr, 10);
+	wmr_wind wind = {
+		.time = 123,
+		.dir = "NNW"
+	};
+	serialize_wind(&arr, &wind);
 
 	for (;;) {
 		if ((newsock = accept(fd, NULL, 0)) == -1) {
@@ -101,7 +106,8 @@ server_start(wmr_server *server) {
 			fprintf(stderr, "Cannot send %zu bytes over nework\n", arr.size);
 		}
 
-		(void)close(newsock);
 		break;
 	}
+
+	(void)close(newsock);
 }

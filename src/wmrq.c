@@ -15,17 +15,19 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include "wmrdata.h"
+#include "loggers/file.h"
+
 #define ARRAY_ELEM		unsigned char
 #define ARRAY_PREFIX(x)		byte_##x
+#include "array.h"
 
 
 #define BUF_LEN		256	/* B */
 #define DEFAULT_PORT	20892
-#include "array.h"
 
 
 int
@@ -70,21 +72,31 @@ main(int argc, const char *argv[]) {
 
 	fprintf(stderr, "Connected to '%s'\n", hostname);
 
-	/*
-	uint query_len = strlen(query);
-	if (write(fd, query, query_len) != query_len) {
-		errx(1, "write: cannot write %u bytes\n", query_len);
-	}
-
 	struct byte_array arr;
 	byte_array_init(&arr);
 
 	unsigned char buf[BUF_LEN];
 	while ((n = read(fd, &buf, sizeof(buf))) > 0) {
+		fprintf(stderr, "Will push %u bytes\n", n);
 		byte_array_push_n(&arr, &buf[0], n);
 	}
-	*/
+
+	fprintf(stderr, "Buffer contents: ");
+	for (uint i = 0; i < arr.size; i++) {
+		fprintf(stderr, "%03u ", arr.elems[i]);
+	}
+	fprintf(stderr, "\n");
+
+	wmr_wind deserialize_wind(struct byte_array *arr);
+
+	wmr_reading reading = {
+		.type = WMR_WIND,
+		.wind = deserialize_wind(&arr)
+	};
+
+	log_to_file(&reading, stdout);
 
 	(void)close(fd);
+	fprintf(stderr, "Received %zu bytes\n", arr.size);
 	return (0);
 }

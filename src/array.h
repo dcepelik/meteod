@@ -10,6 +10,7 @@
 
 
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "common.h"
 
@@ -30,6 +31,8 @@
 
 
 struct P(array) {
+	ARRAY_ELEM *mry;	/* pointer to managed memory */
+	size_t offset;		/* offset to first actual item */
 	ARRAY_ELEM *elems;	/* pointer to first actual item */
 	size_t size;		/* number of elements in the array */
 	size_t capacity;	/* number of elements that fit into the array */
@@ -38,20 +41,23 @@ struct P(array) {
 
 static inline void
 P(array_push_prepare)(struct P(array) *arr, size_t new_count) {
-	if (arr->size + new_count > arr->capacity) {
-		arr->capacity = MAX(2 * arr->capacity, arr->size + new_count);
-		arr->elems = realloc_safe(arr->elems, arr->capacity);
+	if (arr->size + arr->offset + new_count > arr->capacity) {
+		fprintf(stderr, "Expanding array + %zu\n", new_count);
+		arr->capacity = MAX(2 * arr->capacity, arr->size + arr->offset + new_count);
+		arr->mry = realloc_safe(arr->mry, arr->capacity);
+		arr->elems = arr->mry + arr->offset;
 	}
 }
 
 
 static void
 P(array_init_size)(struct P(array) *arr, size_t capacity) {
-	arr->elems = NULL;
+	arr->mry = NULL;
+	arr->offset = 0;
 	arr->size = 0;
 	arr->capacity = 0;
 
-	P(array_push_prepare)(arr, arr->capacity); /* allocates memory */
+	P(array_push_prepare)(arr, capacity); /* allocates memory */
 }
 
 
@@ -86,6 +92,36 @@ P(array_pop)(struct P(array) *arr) {
 	}
 	
 	return arr->elems[--arr->size];
+}
+
+
+static inline ARRAY_ELEM
+P(array_shift)(struct P(array) *arr) {
+	if (arr->size == 0) {
+		die("Cannot shift empty array\n");
+	}
+
+	arr->size--;
+	arr->offset++;
+	return *(arr->elems++);
+}
+
+
+static void
+P(array_unshift)(struct P(array) *arr, ARRAY_ELEM elem) {
+	die("array_unshift is not supported at the moment\n");
+}
+
+
+static inline ARRAY_ELEM
+P(array_first)(struct P(array) *arr) {
+	return arr->elems[0];
+}
+
+
+static inline ARRAY_ELEM
+P(array_last)(struct P(array) *arr) {
+	return arr->elems[arr->size - 1];
 }
 
 
