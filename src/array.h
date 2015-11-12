@@ -27,7 +27,7 @@
 #define P(x)	ARRAY_PREFIX(x)
 
 
-#define DEFAULT_CAPACITY	10
+#define DEFAULT_CAPACITY	8 /* elems */
 
 
 struct P(array) {
@@ -69,6 +69,12 @@ P(array_init_size)(struct P(array) *arr, size_t capacity) {
 static void
 P(array_init)(struct P(array) *arr) {
 	P(array_init_size)(arr, DEFAULT_CAPACITY);
+}
+
+
+static void
+P(array_free)(struct P(array) *arr) {
+	free(arr->mry);
 }
 
 

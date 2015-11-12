@@ -18,10 +18,10 @@
 struct byte_array;	/* growing byte array */
 
 
-void serialize_reading(struct byte_array *arr, wmr_reading *reading);
+void serialize_data(struct byte_array *arr, wmr_latest_data *data);
 
 
-void deserialize_reading(struct byte_array *arr, wmr_reading *reading);
+void deserialize_data(struct byte_array *arr, wmr_latest_data *data);
 
 
 #endif

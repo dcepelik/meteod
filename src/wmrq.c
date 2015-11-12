@@ -39,7 +39,7 @@ main(int argc, const char *argv[]) {
 	struct addrinfo *srvinfo, *rp;
 
 	if (argc < 3)
-		errx(1, "usage: %s <hostname> <portstr>\n", argv[0]);
+		errx(EXIT_FAILURE, "usage: %s <hostname> <portstr>\n", argv[0]);
 
 	hostname = argv[1];
 	portstr = argv[2];
@@ -51,7 +51,7 @@ main(int argc, const char *argv[]) {
 	hints.ai_protocol = 0;
 
 	if ((ret = getaddrinfo(hostname, portstr, &hints, &srvinfo)) != 0)
-		errx(1, "getaddrinfo failed for '%s': %s\n", hostname, gai_strerror(ret));
+		errx(EXIT_FAILURE, "getaddrinfo failed for '%s': %s\n", hostname, gai_strerror(ret));
 
 	for (rp = srvinfo; rp != NULL; rp = rp->ai_next) {
 		fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
@@ -68,7 +68,7 @@ main(int argc, const char *argv[]) {
 	freeaddrinfo(srvinfo);
 
 	if (rp == NULL) /* no address succeeded */
-		errx(1, "Cannot connect to '%s'\n", hostname);
+		errx(EXIT_FAILURE, "Cannot connect to '%s'\n", hostname);
 
 	DEBUG_MSG("Connected to '%s'", hostname);
 
@@ -77,18 +77,16 @@ main(int argc, const char *argv[]) {
 
 	unsigned char buf[BUF_LEN];
 	while ((n = read(fd, &buf, sizeof(buf))) > 0) {
-		fprintf(stderr, "Will push %u bytes\n", n);
 		byte_array_push_n(&arr, &buf[0], n);
 	}
 
 	DEBUG_MSG("Read %zu bytes from network", arr.size);
 
-	wmr_reading reading;
-	deserialize_reading(&arr, &reading);
-
-	log_to_file(&reading, stdout);
+	wmr_latest_data data;
+	deserialize_data(&arr, &data);
 
 	(void)close(fd);
 	DEBUG_MSG("%s", "Connection to server closed");
-	return (0);
+
+	return (EXIT_SUCCESS);
 }

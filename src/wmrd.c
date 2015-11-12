@@ -66,7 +66,7 @@ main(int argc, const char *argv[]) {
 
 	//pthread_join(comm_thread, NULL);
 
-	fprintf(stderr, "\n\n%s: graceful daemon termination\n", argv[0]);
+	fprintf(stderr, "\n\n%s: graceful termination\n", argv[0]);
 	return (EXIT_SUCCESS);
 }
 

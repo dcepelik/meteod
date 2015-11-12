@@ -82,11 +82,15 @@ deserialize_float(struct byte_array *arr) {
 
 static void
 serialize_string(struct byte_array *arr, const char *str) {
-	int i = 0;
-	while (str[i] != '\0') {
-		byte_array_push(arr, str[i]);
-		i++;
+	if (str != NULL) {
+		int i = 0;
+		while (str[i] != '\0') {
+			DEBUG_MSG("Char: %i", str[i]);
+			byte_array_push(arr, str[i]);
+			i++;
+		}
 	}
+
 	byte_array_push(arr, '\0');
 }
 
@@ -275,9 +279,7 @@ deserialize_meta(struct byte_array *arr, wmr_meta *meta) {
 }
 
 
-/********************** public interface **********************/
-
-
+/* TODO this ain't needed anymore, screw this?
 void
 serialize_reading(struct byte_array *arr, wmr_reading *reading) {
 	serialize_int(arr, reading->type);
@@ -354,5 +356,30 @@ deserialize_reading(struct byte_array *arr, wmr_reading *reading) {
 		die("Cannot serialize reading of type %02x\n", reading->type);
 	}
 }
+*/
 
 
+/********************** public interface **********************/
+
+
+void
+serialize_data(struct byte_array *arr, wmr_latest_data *data) {
+	serialize_wind(arr, &data->wind);
+	serialize_rain(arr, &data->rain);
+	serialize_uvi(arr, &data->uvi);
+	serialize_baro(arr, &data->baro);
+	serialize_status(arr, &data->status);
+	serialize_meta(arr, &data->meta);
+}
+
+
+void
+deserialize_data(struct byte_array *arr, wmr_latest_data *data) {
+	deserialize_wind(arr, &data->wind);
+	deserialize_rain(arr, &data->rain);
+	deserialize_uvi(arr, &data->uvi);
+	deserialize_baro(arr, &data->baro);
+	deserialize_status(arr, &data->status);
+	deserialize_meta(arr, &data->meta);
+
+}

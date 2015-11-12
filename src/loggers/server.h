@@ -12,23 +12,12 @@
 #define SERVER_H
 
 #include "wmr200.h"
-#include "wmrdata.h"
-
-
-struct latest_data {
-	wmr_wind wind;
-	wmr_rain rain;
-	wmr_uvi uvi;
-	wmr_baro baro;
-	wmr_temp temp[WMR200_MAX_TEMP_SENSORS];
-	wmr_status status;
-};
 
 
 typedef struct {
 	int fd;				/* server socket descriptor */
 	pthread_t thread_id;		/* server thread ID */
-	struct latest_data data;	/* latest readings of all kinds */
+	wmr_latest_data data;		/* latest readings of all kinds */
 } wmr_server;
 
 

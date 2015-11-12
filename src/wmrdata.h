@@ -112,4 +112,15 @@ typedef struct {
 } wmr_reading;
 
 
+typedef struct {
+	wmr_wind wind;
+	wmr_rain rain;
+	wmr_uvi uvi;
+	wmr_baro baro;
+	wmr_temp temp[10]; // TODO
+	wmr_status status;
+	wmr_meta meta;
+} wmr_latest_data;
+
+
 #endif
