@@ -21,9 +21,6 @@
 #include "loggers/server.h"
 
 
-wmr200 *wmr;
-
-
 static void
 shutdown(int signum) {
 	DEBUG_MSG("Caught signal %d (%s)", signum, strsignal(signum));
@@ -54,7 +51,7 @@ main(int argc, const char *argv[]) {
 
 	/* start the logger daemon and socket server threads */
 	// pthread_create(&comm_thread, NULL, wmr_main_loop, wmr);
-	pthread_create(&server_thread, NULL, server_main_loop_pthread, &srv);
+	pthread_create(&server_thread, NULL, server_pthread_mainloop, &srv);
 
 	/* install of SIGTERM and SIGINT signals */
 	struct sigaction sa;
@@ -70,6 +67,7 @@ main(int argc, const char *argv[]) {
 	pause();
 
 	//pthread_cancel(comm_thread);
+
 	pthread_cancel(server_thread);
 
 	//pthread_join(comm_thread, NULL);

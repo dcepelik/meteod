@@ -22,18 +22,75 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <rpc/xdr.h>
-#include "time.h"
-
-
-void
-server_init(wmr_server *srv) {
-
-}
+#include <time.h>
+#include <pthread.h>
 
 
 #define ARRAY_ELEM		unsigned char
 #define ARRAY_PREFIX(x)		byte_##x
 #include "array.h"
+
+
+static void
+mainloop(wmr_server *srv) {
+	int fd;
+	int port = 20892;
+	int optval = 1;
+
+	struct sockaddr_in in = {
+		.sin_family = AF_INET,
+		.sin_port = htons(port),
+		.sin_addr.s_addr = htonl(INADDR_ANY),
+	};
+
+	if ((srv->fd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+		err(1, "socket");
+
+	DEBUG_MSG("Server socket is open, socket fd is %u", srv->fd);
+
+	if (setsockopt(srv->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1)
+		err(1, "setsockopt");
+
+	DEBUG_MSG("%s", "Set SO_REUSEADDR on server socket");
+
+	if (bind(srv->fd, (struct sockaddr *) &in, sizeof(in)) == -1)
+		err(1, "bind");
+
+	DEBUG_MSG("Bound to port %u", port);
+
+	if (listen(srv->fd, SOMAXCONN) == -1)
+		err(1, "listen");
+
+	DEBUG_MSG("%s", "Server is listening for incoming connections");
+
+	for (;;) {
+		/* POSIX.1: accept is a cancellation point */
+		if ((fd = accept(srv->fd, NULL, 0)) == -1)
+			err(1, "accept");
+
+		DEBUG_MSG("Client accepted, socket fd is %u", fd);
+
+		/*
+		if (write(fd, arr.elems, arr.size) != arr.size) {
+			DEBUG_MSG("Cannot send %zu bytes over nework", arr.size);
+		}
+		*/
+
+		(void)close(fd);
+	}
+}
+
+
+static void
+cleanup(wmr_server *srv) {
+	if (srv->fd >= 0) {
+		DEBUG_MSG("%s", "Terminating server socket");
+		(void)close(srv->fd);
+	}
+}
+
+
+/********************** logger api **********************/
 
 
 void
@@ -66,60 +123,26 @@ log_to_server(wmr_server *srv, wmr_reading *reading) {
 }
 
 
-static void
-main_loop(wmr_server *server) {
-	int server_fd, client_fd;
-	int port = 20892;
-	int optval = 1;
+/********************** public interface **********************/
 
-	struct sockaddr_in in = {
-		.sin_family = AF_INET,
-		.sin_port = htons(port),
-		.sin_addr.s_addr = htonl(INADDR_ANY),
-	};
 
-	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-		err(1, "socket");
-
-	DEBUG_MSG("Socket is open, server_fd = %u", server_fd);
-
-	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1)
-		err(1, "setsockopt");
-
-	DEBUG_MSG("%s", "Set SO_REUSEADDR on server socket");
-
-	if (bind(server_fd, (struct sockaddr *) &in, sizeof(in)) == -1)
-		err(1, "bind");
-
-	DEBUG_MSG("Bound to port %u", port);
-
-	if (listen(server_fd, SOMAXCONN) == -1)
-		err(1, "listen");
-
-	DEBUG_MSG("%s", "Server is listening for incoming connections");
-
-	for (;;) {
-		/* POSIX.1: accept is cancellation point */
-		if ((client_fd = accept(server_fd, NULL, 0)) == -1)
-			err(1, "accept");
-
-		DEBUG_MSG("Client accepted, client_fd = %u", client_fd);
-
-		/*
-		if (write(client_fd, arr.elems, arr.size) != arr.size) {
-			DEBUG_MSG("Cannot send %zu bytes over nework", arr.size);
-		}
-		*/
-
-		(void)close(client_fd);
-	}
-
-	(void)close(server_fd);
+void
+server_init(wmr_server *srv) {
+	memset(&srv->data, 0, sizeof(srv->data)); /* will be sent over net */
+	srv->fd = -1;
 }
 
 
 void *
-server_main_loop_pthread(void *x) {
-	main_loop((wmr_server *)x);
+server_pthread_mainloop(void *x) {
+	wmr_server *srv = (wmr_server *)x;
+
+	pthread_cleanup_push(cleanup, srv);
+	mainloop(srv);
+	pthread_cleanup_pop(0);
+
 	return NULL;
 }
+
+
+

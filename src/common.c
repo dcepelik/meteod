@@ -24,7 +24,7 @@ die(char *format, ...) {
 	vprintf(format, args);
 
 	va_end(args);
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 

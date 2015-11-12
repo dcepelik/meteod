@@ -26,7 +26,8 @@ struct latest_data {
 
 
 typedef struct {
-	struct latest_data data;
+	struct latest_data data;	/* latest readings of all kinds */
+	int fd;				/* server socket descriptor */
 } wmr_server;
 
 
@@ -35,7 +36,11 @@ server_init(wmr_server *srv);
 
 
 void *
-server_main_loop_pthread(void *srv);
+server_pthread_mainloop(void *srv);
+
+
+void
+server_pthread_cleanup(void *srv);
 
 
 void
