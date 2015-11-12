@@ -10,7 +10,10 @@
 
 
 #include <stdio.h>
+#include <pthread.h>
 #include <signal.h>
+#include <string.h>
+#include <unistd.h>
 
 #include "wmr200.h"
 #include "loggers/file.h"
@@ -22,12 +25,8 @@ wmr200 *wmr;
 
 
 static void
-cleanup(int signum) {
-	wmr_close(wmr);
-	wmr_end();
-
-	printf("\n\nCaught signal %i, will exit\n", signum);
-	exit(0);
+shutdown(int signum) {
+	DEBUG_MSG("Caught signal %d (%s)", signum, strsignal(signum));
 }
 
 
@@ -41,33 +40,43 @@ handler(wmr_reading *reading) {
 
 int
 main(int argc, const char *argv[]) {
+	sigset_t set, oldset;
+	pthread_t comm_thread, server_thread;
 	wmr_server srv;
 
-	server_start(&srv);
+	server_init(&srv);
 
-	/*
+	/* mask SIGINT and SIGTERM to make sure this thread handles them */
+	sigemptyset(&set);
+	sigaddset(&set, SIGINT);
+	sigaddset(&set, SIGTERM);
+	pthread_sigmask(SIG_BLOCK, &set, &oldset);
+
+	/* start the logger daemon and socket server threads */
+	// pthread_create(&comm_thread, NULL, wmr_main_loop, wmr);
+	pthread_create(&server_thread, NULL, server_main_loop_pthread, &srv);
+
+	/* install of SIGTERM and SIGINT signals */
 	struct sigaction sa;
-	sa.sa_handler = cleanup;
-	sigaction(SIGTERM, &sa, NULL); // TODO
-	sigaction(SIGINT, &sa, NULL); // TODO
+	sa.sa_handler = shutdown;
+	sa.sa_flags = 0;
+	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGINT, &sa, NULL);
 
-	wmr_init();
+	/* restore original sigmask for this thread only */
+	pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 
-	wmr = wmr_open();
-	if (wmr == NULL) {
-		fprintf(stderr, "wmr_connect(): no WMR200 handle returned\n");
-		return (1);
-	}
+	/* wait for SIGINT/SIGKILL to arrive, then shutdown */
+	pause();
 
-	wmr_set_handler(wmr, handler);
+	//pthread_cancel(comm_thread);
+	pthread_cancel(server_thread);
 
-	wmr_main_loop(wmr);
+	//pthread_join(comm_thread, NULL);
+	pthread_join(server_thread, NULL);
 
-	wmr_close(wmr);
-	wmr_end();
-	*/
-
-	return (0);
+	fprintf(stderr, "\n\n%s: graceful daemon termination\n", argv[0]);
+	return (EXIT_SUCCESS);
 }
 
 

@@ -25,6 +25,12 @@
 #include "time.h"
 
 
+void
+server_init(wmr_server *srv) {
+
+}
+
+
 #define ARRAY_ELEM		unsigned char
 #define ARRAY_PREFIX(x)		byte_##x
 #include "array.h"
@@ -60,19 +66,8 @@ log_to_server(wmr_server *srv, wmr_reading *reading) {
 }
 
 
-void
-send_latest_data(wmr_server *server) {
-}
-
-
 static void
-main_loop() {
-	
-}
-
-
-void
-server_start(wmr_server *server) {
+main_loop(wmr_server *server) {
 	int server_fd, client_fd;
 	int port = 20892;
 	int optval = 1;
@@ -123,4 +118,8 @@ server_start(wmr_server *server) {
 }
 
 
-
+void *
+server_main_loop_pthread(void *x) {
+	main_loop((wmr_server *)x);
+	return NULL;
+}

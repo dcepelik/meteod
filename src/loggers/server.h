@@ -31,11 +31,11 @@ typedef struct {
 
 
 void
-server_start(wmr_server *srv);
+server_init(wmr_server *srv);
 
 
-void
-server_stop(wmr_server *srv);
+void *
+server_main_loop_pthread(void *srv);
 
 
 void

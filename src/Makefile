@@ -11,6 +11,7 @@ CFLAGS=-c \
 	-I.
 
 LDFLAGS=`pkg-config --libs hidapi-libusb librrd` \
+	-lpthread \
 	-Wall
 
 OBJS=common.o wmr200.o strbuf.o serialize.o \
