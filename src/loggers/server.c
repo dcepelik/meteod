@@ -32,8 +32,56 @@
 
 
 static void
+cleanup(wmr_server *srv) {
+	if (srv->fd >= 0) {
+		DEBUG_MSG("%s", "Closing server socket");
+		(void)close(srv->fd);
+	}
+}
+
+
+static void
 mainloop(wmr_server *srv) {
 	int fd;
+	
+	DEBUG_MSG("%s", "Entering server main loop");
+	for (;;) {
+		/* POSIX.1: accept is a cancellation point */
+		if ((fd = accept(srv->fd, NULL, 0)) == -1)
+			err(1, "accept");
+
+		DEBUG_MSG("Client accepted, socket descriptor is %u", fd);
+
+		(void)close(fd);
+		DEBUG_MSG("%s", "Client socket closed");
+	}
+}
+
+
+static void *
+mainloop_pthread(void *x) {
+	wmr_server *srv = (wmr_server *)x;
+
+	pthread_cleanup_push(cleanup, srv);
+	mainloop(srv);
+	pthread_cleanup_pop(0);
+
+	return NULL;
+}
+
+
+/********************** public interface **********************/
+
+
+void
+server_init(wmr_server *srv) {
+	memset(&srv->data, 0, sizeof(srv->data)); /* will be sent over net */
+	srv->fd = srv->thread_id = -1;
+}
+
+
+int
+server_start(wmr_server *srv) {
 	int port = 20892;
 	int optval = 1;
 
@@ -43,58 +91,45 @@ mainloop(wmr_server *srv) {
 		.sin_addr.s_addr = htonl(INADDR_ANY),
 	};
 
-	if ((srv->fd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-		err(1, "socket");
-
-	DEBUG_MSG("Server socket is open, socket fd is %u", srv->fd);
-
-	if (setsockopt(srv->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1)
-		err(1, "setsockopt");
-
-	DEBUG_MSG("%s", "Set SO_REUSEADDR on server socket");
-
-	if (bind(srv->fd, (struct sockaddr *) &in, sizeof(in)) == -1)
-		err(1, "bind");
-
-	DEBUG_MSG("Bound to port %u", port);
-
-	if (listen(srv->fd, SOMAXCONN) == -1)
-		err(1, "listen");
-
-	DEBUG_MSG("%s", "Server is listening for incoming connections");
-
-	for (;;) {
-		/* POSIX.1: accept is a cancellation point */
-		if ((fd = accept(srv->fd, NULL, 0)) == -1)
-			err(1, "accept");
-
-		DEBUG_MSG("Client accepted, socket fd is %u", fd);
-
-		/*
-		if (write(fd, arr.elems, arr.size) != arr.size) {
-			DEBUG_MSG("Cannot send %zu bytes over nework", arr.size);
-		}
-		*/
-
-		(void)close(fd);
+	if ((srv->fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+		DEBUG_MSG("%s", "Cannot open server socket");
+		return (-1);
 	}
-}
 
-
-static void
-cleanup(wmr_server *srv) {
-	if (srv->fd >= 0) {
-		DEBUG_MSG("%s", "Terminating server socket");
-		(void)close(srv->fd);
+	if (setsockopt(srv->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
+		DEBUG_MSG("%s", "Cannot set SO_REUSEADDR on server socket");
+		return (-1);
 	}
+
+	if (bind(srv->fd, (struct sockaddr *) &in, sizeof(in)) == -1) {
+		DEBUG_MSG("Cannot bind server socket to port %d", port);
+		return (-1);
+	}
+
+	if (listen(srv->fd, SOMAXCONN) == -1) {
+		DEBUG_MSG("%s", "Cannot start listening");
+		return (-1);
+	}
+	
+	if (pthread_create(&srv->thread_id, NULL, mainloop_pthread, srv) != 0) {
+		DEBUG_MSG("%s", "Cannot start main loop thread");
+		return (-1);
+	}
+
+	DEBUG_MSG("Server start sucessfull, descriptor is %d", srv->fd);
+	return (0);
 }
-
-
-/********************** logger api **********************/
 
 
 void
-log_to_server(wmr_server *srv, wmr_reading *reading) {
+server_stop(wmr_server *srv) {
+	pthread_cancel(srv->thread_id);
+	pthread_join(srv->thread_id, NULL);
+}
+
+
+void
+server_push_reading(wmr_server *srv, wmr_reading *reading) {
 	switch (reading->type) {
 	case WMR_WIND:
 		srv->data.wind = reading->wind;
@@ -121,28 +156,4 @@ log_to_server(wmr_server *srv, wmr_reading *reading) {
 		break;
 	}
 }
-
-
-/********************** public interface **********************/
-
-
-void
-server_init(wmr_server *srv) {
-	memset(&srv->data, 0, sizeof(srv->data)); /* will be sent over net */
-	srv->fd = -1;
-}
-
-
-void *
-server_pthread_mainloop(void *x) {
-	wmr_server *srv = (wmr_server *)x;
-
-	pthread_cleanup_push(cleanup, srv);
-	mainloop(srv);
-	pthread_cleanup_pop(0);
-
-	return NULL;
-}
-
-
 

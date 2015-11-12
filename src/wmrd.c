@@ -31,29 +31,24 @@ static void
 handler(wmr_reading *reading) {
 	log_to_file(reading, stdout);
 	log_to_rrd(reading, "/home/david/gymlit/tools/meteo/temp.rrd");
-	// log to server
 }
 
 
 int
 main(int argc, const char *argv[]) {
 	sigset_t set, oldset;
-	pthread_t comm_thread, server_thread;
 	wmr_server srv;
 
-	server_init(&srv);
-
-	/* mask SIGINT and SIGTERM to make sure this thread handles them */
+	/* mask SIGINT and SIGTERM away from spawned processes */
 	sigemptyset(&set);
 	sigaddset(&set, SIGINT);
 	sigaddset(&set, SIGTERM);
 	pthread_sigmask(SIG_BLOCK, &set, &oldset);
 
-	/* start the logger daemon and socket server threads */
-	// pthread_create(&comm_thread, NULL, wmr_main_loop, wmr);
-	pthread_create(&server_thread, NULL, server_pthread_mainloop, &srv);
+	server_init(&srv);
+	server_start(&srv);
 
-	/* install of SIGTERM and SIGINT signals */
+	/* install signal handlers */
 	struct sigaction sa;
 	sa.sa_handler = shutdown;
 	sa.sa_flags = 0;
@@ -67,11 +62,9 @@ main(int argc, const char *argv[]) {
 	pause();
 
 	//pthread_cancel(comm_thread);
-
-	pthread_cancel(server_thread);
+	server_stop(&srv);
 
 	//pthread_join(comm_thread, NULL);
-	pthread_join(server_thread, NULL);
 
 	fprintf(stderr, "\n\n%s: graceful daemon termination\n", argv[0]);
 	return (EXIT_SUCCESS);
