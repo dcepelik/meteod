@@ -7,14 +7,13 @@ CFLAGS=-c \
 	`pkg-config --cflags hidapi-libusb librrd` \
 	-Wall --pedantic -g \
 	-Wno-unused-function \
-	-DDEBUG \
 	-I.
 
 LDFLAGS=`pkg-config --libs hidapi-libusb librrd` \
 	-lpthread \
 	-Wall
 
-OBJS=common.o wmr200.o strbuf.o serialize.o \
+OBJS=common.o wmr200.o strbuf.o serialize.o daemon.o \
 	loggers/file.o loggers/rrd.o loggers/server.o
 
 BINS=wmrd wmrq
