@@ -124,7 +124,7 @@ send_cmd_frame(wmr200 *wmr, uchar cmd) {
 
 static void
 send_heartbeat(wmr200 *wmr) {
-	DEBUG_MSG("Sending heartbeat to WMR200\n");
+	DEBUG_MSG("%s", "Sending heartbeat to WMR200");
 	send_cmd_frame(wmr, HEARTBEAT);
 }
 
@@ -391,7 +391,7 @@ dispatch_packet(wmr200 *wmr) {
 		break;
 
 	default:
-		DEBUG_MSG("Ignoring unknown packet 0x%02X\n", wmr->packet_type);
+		DEBUG_MSG("Ignoring unknown packet 0x%02X", wmr->packet_type);
 	}
 }
 
@@ -404,19 +404,19 @@ main_loop(wmr200 *wmr) {
 act_on_packet_type:
 		switch (wmr->packet_type) {
 		case HISTORIC_DATA_NOTIF:
-			DEBUG_MSG("Data logger contains some unprocessed historic records\n");
-			DEBUG_MSG("Issuing REQUEST_HISTORIC_DATA command\n");
+			DEBUG_MSG("%s", "Data logger contains some unprocessed historic records");
+			DEBUG_MSG("%s", "Issuing REQUEST_HISTORIC_DATA command");
 
 			send_cmd_frame(wmr, REQUEST_HISTORIC_DATA);
 			continue;
 
 		case LOGGER_DATA_ERASE:
-			DEBUG_MSG("Data logger database purge successful\n");
+			DEBUG_MSG("%s", "Data logger database purge successful");
 			continue;
 
 		case COMMUNICATION_STOP:
 			// ignore, sent as response to prev COMMUNICATION_STOP request
-			DEBUG_MSG("Ignoring COMMUNICATION_STOP packet\n");
+			DEBUG_MSG("%s", "Ignoring COMMUNICATION_STOP packet");
 			break;
 		}
 
@@ -443,7 +443,7 @@ act_on_packet_type:
 			continue;
 		}
 
-		DEBUG_MSG("Packet 0x%02X (%u bytes)\n", wmr->packet_type, wmr->packet_len);
+		DEBUG_MSG("Packet 0x%02X (%u bytes)", wmr->packet_type, wmr->packet_len);
 		wmr->meta.latest_packet = time(NULL);
 		dispatch_packet(wmr);
 
@@ -494,7 +494,7 @@ wmr_open() {
 
 	wmr->dev = hid_open(VENDOR_ID, PRODUCT_ID, NULL);
 	if (wmr->dev == NULL) {
-		DEBUG_MSG("hid_open(): cannot connect to WRM200\n");
+		DEBUG_MSG("%s", "hid_open(): cannot connect to WRM200");
 		return NULL;
 	}
 
@@ -508,7 +508,7 @@ wmr_open() {
 	// some kind of a wake-up command
 	uchar abracadabra[8] = { 0x20, 0x00, 0x08, 0x01, 0x00, 0x00, 0x00, 0x00 };
 	if (hid_write(wmr->dev, abracadabra, 8) != 8) {
-		DEBUG_MSG("Cannot initialize communication with WMR200\n");
+		DEBUG_MSG("%s", "Cannot initialize communication with WMR200");
 		return NULL;
 	}
 

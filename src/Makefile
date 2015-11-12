@@ -32,7 +32,10 @@ wmrq: wmrq.o common.o serialize.o loggers/file.o strbuf.o
 wmr200.o: wmr200.c wmrdata.h common.h
 	${CC} ${CFLAGS} -o $@ $<
 
-serialize.o: serialize.c serialize.h wmrdata.h strbuf.h common.h
+serialize.o: serialize.c serialize.h wmrdata.h strbuf.h array.h common.h
+	${CC} ${CFLAGS} -o $@ $<
+
+loggers/server.o: loggers/server.c loggers/server.h array.h common.h
 	${CC} ${CFLAGS} -o $@ $<
 
 loggers/file.o: loggers/file.c loggers/file.h wmrdata.h

@@ -51,7 +51,7 @@ main(int argc, const char *argv[]) {
 	hints.ai_protocol = 0;
 
 	if ((ret = getaddrinfo(hostname, portstr, &hints, &srvinfo)) != 0)
-		errx( 1, "getaddrinfo failed for '%s': %s\n", hostname, gai_strerror(ret));
+		errx(1, "getaddrinfo failed for '%s': %s\n", hostname, gai_strerror(ret));
 
 	for (rp = srvinfo; rp != NULL; rp = rp->ai_next) {
 		fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
@@ -67,11 +67,10 @@ main(int argc, const char *argv[]) {
 
 	freeaddrinfo(srvinfo);
 
-	if (rp == NULL) { /* no address succeeded */
+	if (rp == NULL) /* no address succeeded */
 		errx(1, "Cannot connect to '%s'\n", hostname);
-	}
 
-	fprintf(stderr, "Connected to '%s'\n", hostname);
+	DEBUG_MSG("Connected to '%s'", hostname);
 
 	struct byte_array arr;
 	byte_array_init(&arr);
@@ -82,7 +81,7 @@ main(int argc, const char *argv[]) {
 		byte_array_push_n(&arr, &buf[0], n);
 	}
 
-	fprintf(stderr, "Read %zu bytes\n", arr.size);
+	DEBUG_MSG("Read %zu bytes from network", arr.size);
 
 	wmr_reading reading;
 	deserialize_reading(&arr, &reading);
@@ -90,6 +89,6 @@ main(int argc, const char *argv[]) {
 	log_to_file(&reading, stdout);
 
 	(void)close(fd);
-	fprintf(stderr, "Received %zu bytes\n", arr.size);
+	DEBUG_MSG("%s", "Connection to server closed");
 	return (0);
 }

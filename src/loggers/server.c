@@ -12,6 +12,7 @@
 #include "server.h"
 #include "strbuf.h"
 #include "serialize.h"
+#include "common.h"
 
 #include <stdio.h>
 #include <unistd.h>
@@ -64,61 +65,62 @@ send_latest_data(wmr_server *server) {
 }
 
 
+static void
+main_loop() {
+	
+}
+
+
 void
 server_start(wmr_server *server) {
-	int fd, newsock;
+	int server_fd, client_fd;
+	int port = 20892;
+	int optval = 1;
 
 	struct sockaddr_in in = {
 		.sin_family = AF_INET,
-		.sin_port = htons(20892),
+		.sin_port = htons(port),
 		.sin_addr.s_addr = htonl(INADDR_ANY),
 	};
 
-	if ((fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
 		err(1, "socket");
-	}
 
-	if (bind(fd, (struct sockaddr *) &in, sizeof(in)) == -1) {
+	DEBUG_MSG("Socket is open, server_fd = %u", server_fd);
+
+	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1)
+		err(1, "setsockopt");
+
+	DEBUG_MSG("%s", "Set SO_REUSEADDR on server socket");
+
+	if (bind(server_fd, (struct sockaddr *) &in, sizeof(in)) == -1)
 		err(1, "bind");
-	}
 
-	if (listen(fd, SOMAXCONN) == -1) {
+	DEBUG_MSG("Bound to port %u", port);
+
+	if (listen(server_fd, SOMAXCONN) == -1)
 		err(1, "listen");
-	}
 
-	wmr_reading reading = {
-		.type = WMR_TEMP,
-		.temp = {
-			.time = time(NULL),
-			.sensor_id = 42,
-			.humidity = 77,
-			.heat_index = 2,
-			.temp = 1.445,
-			.dew_point = 17.222228,
-		}
-	};
-
-	struct byte_array arr;
-	byte_array_init(&arr);
-
-	serialize_reading(&arr, &reading);
-
-	fprintf(stderr, "Server array size: %zu\n", arr.size);
-
+	DEBUG_MSG("%s", "Server is listening for incoming connections");
 
 	for (;;) {
-		if ((newsock = accept(fd, NULL, 0)) == -1) {
+		/* POSIX.1: accept is cancellation point */
+		if ((client_fd = accept(server_fd, NULL, 0)) == -1)
 			err(1, "accept");
+
+		DEBUG_MSG("Client accepted, client_fd = %u", client_fd);
+
+		/*
+		if (write(client_fd, arr.elems, arr.size) != arr.size) {
+			DEBUG_MSG("Cannot send %zu bytes over nework", arr.size);
 		}
+		*/
 
-		fprintf(stderr, "Accepted client\n");
-
-		if (write(newsock, arr.elems, arr.size) != arr.size) {
-			fprintf(stderr, "Cannot send %zu bytes over nework\n", arr.size);
-		}
-
-		break;
+		(void)close(client_fd);
 	}
 
-	(void)close(newsock);
+	(void)close(server_fd);
 }
+
+
+

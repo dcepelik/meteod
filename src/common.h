@@ -15,18 +15,17 @@
 #include <stdlib.h>
 
 
+#define MAX(a, b)		((a) > (b) ? (a) : (b))
+
+
+#define DEBUG_MSG(fmt, ...) do { \
+	if (DEBUG) fprintf(stderr, "*** DEBUG *** " fmt " at %s:%d\n", \
+		 __VA_ARGS__, __FILE__, __LINE__); \
+} while (0);
+
+
 typedef unsigned int		uint;
 typedef unsigned char		uchar;
-
-
-#ifdef  DEBUG
-#define DEBUG_MSG(...)		fprintf(stderr, __VA_ARGS__)
-#else
-#define DEBUG_MSG(...)
-#endif
-
-
-#define MAX(a, b)		((a) > (b) ? (a) : (b))
 
 
 void *die(char *format, ...);
