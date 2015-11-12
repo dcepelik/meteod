@@ -19,6 +19,10 @@
 #define	MAX(a, b)		((a) > (b) ? (a) : (b))
 
 
+#ifndef DEBUG
+#define	DEBUG	0
+#endif
+
 #define	DEBUG_MSG(fmt, ...) do { \
 	if (DEBUG) fprintf(stderr, "*** DEBUG *** " fmt " at %s:%d\n", \
 		__VA_ARGS__, __FILE__, __LINE__); \
