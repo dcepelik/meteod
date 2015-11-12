@@ -92,12 +92,12 @@ strbuf_prepend(strbuf *buf, char *format, ...) {
 char *
 strbuf_copy(strbuf *buf) {
 	char *str = malloc(buf->offset + 1);
-	for (uint i = 0; i < buf->offset; i++) {
+	for (uint_t i = 0; i < buf->offset; i++) {
 		str[i] = buf->str[i];
 	}
 	str[buf->offset] = '\0';
 
-	return str;
+	return (str);
 }
 
 

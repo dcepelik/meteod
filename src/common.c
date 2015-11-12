@@ -33,7 +33,7 @@ malloc_safe(size_t size) {
 	void *x = malloc(size);
 	if (!x) die("Cannot allocate %zu bytes of memory", size);
 
-	return x;
+	return (x);
 }
 
 
@@ -42,8 +42,5 @@ realloc_safe(void *x, size_t size) {
 	x = realloc(x, size);
 	if (!x) die("Cannot reallocate memory (new size was %zu bytes)", size);
 
-	return x;
+	return (x);
 }
-
-
-

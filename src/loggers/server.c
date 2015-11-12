@@ -26,8 +26,8 @@
 #include <pthread.h>
 
 
-#define ARRAY_ELEM		unsigned char
-#define ARRAY_PREFIX(x)		byte_##x
+#define	ARRAY_ELEM		unsigned char
+#define	ARRAY_PREFIX(x)		byte_##x
 #include "array.h"
 
 
@@ -35,7 +35,7 @@ static void
 cleanup(wmr_server *srv) {
 	if (srv->fd >= 0) {
 		DEBUG_MSG("%s", "Closing server socket");
-		(void)close(srv->fd);
+		(void) close(srv->fd);
 	}
 }
 
@@ -43,7 +43,7 @@ cleanup(wmr_server *srv) {
 static void
 mainloop(wmr_server *srv) {
 	int fd;
-	
+
 	DEBUG_MSG("%s", "Entering server main loop");
 	for (;;) {
 		/* POSIX.1: accept is a cancellation point */
@@ -58,10 +58,11 @@ mainloop(wmr_server *srv) {
 		serialize_data(&data, &srv->data);
 
 		if (write(fd, data.elems, data.size) != data.size) {
-			fprintf(stderr, "Cannot send %zu bytes of data\n", data.size);
+			fprintf(stderr, "Cannot send %zu bytes of data\n",
+				data.size);
 		}
 
-		(void)close(fd);
+		(void) close(fd);
 		DEBUG_MSG("%s", "Client socket closed");
 	}
 }
@@ -75,16 +76,18 @@ mainloop_pthread(void *x) {
 	mainloop(srv);
 	pthread_cleanup_pop(0);
 
-	return NULL;
+	return (NULL);
 }
 
 
-/********************** public interface **********************/
+/*
+ * public interface
+ */
 
 
 void
 server_init(wmr_server *srv) {
-	memset(&(srv->data), 0, sizeof(srv->data)); /* will be sent over net */
+	memset(&(srv->data), 0, sizeof (srv->data)); /* will be sent over net */
 	srv->fd = srv->thread_id = -1;
 }
 
@@ -93,6 +96,7 @@ int
 server_start(wmr_server *srv) {
 	int port = 20892;
 	int optval = 1;
+	int ret;
 
 	struct sockaddr_in in = {
 		.sin_family = AF_INET,
@@ -105,12 +109,15 @@ server_start(wmr_server *srv) {
 		return (-1);
 	}
 
-	if (setsockopt(srv->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
+	ret = setsockopt(srv->fd, SOL_SOCKET, SO_REUSEADDR,
+		&optval, sizeof (optval));
+
+	if (ret == -1) {
 		DEBUG_MSG("%s", "Cannot set SO_REUSEADDR on server socket");
 		return (-1);
 	}
 
-	if (bind(srv->fd, (struct sockaddr *) &in, sizeof(in)) == -1) {
+	if (bind(srv->fd, (struct sockaddr *)&in, sizeof (in)) == -1) {
 		DEBUG_MSG("Cannot bind server socket to port %d", port);
 		return (-1);
 	}
@@ -119,7 +126,7 @@ server_start(wmr_server *srv) {
 		DEBUG_MSG("%s", "Cannot start listening");
 		return (-1);
 	}
-	
+
 	if (pthread_create(&srv->thread_id, NULL, mainloop_pthread, srv) != 0) {
 		DEBUG_MSG("%s", "Cannot start main loop thread");
 		return (-1);
@@ -169,4 +176,3 @@ server_push_reading(wmr_server *srv, wmr_reading *reading) {
 		break;
 	}
 }
-

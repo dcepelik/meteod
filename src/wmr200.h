@@ -9,7 +9,7 @@
  */
 
 #ifndef WMR200_H
-#define WMR200_H
+#define	WMR200_H
 
 #include "wmrdata.h"
 #include "common.h"
@@ -18,8 +18,8 @@
 #include <hidapi.h>
 
 
-#define WMR200_FRAME_SIZE		8
-#define WMR200_MAX_TEMP_SENSORS		10
+#define	WMR200_FRAME_SIZE		8
+#define	WMR200_MAX_TEMP_SENSORS		10
 
 
 struct wmr_handler;
@@ -28,13 +28,13 @@ typedef struct {
 	hid_device *dev;		// HIDAPI device handle
 
 	uchar buf[WMR200_FRAME_SIZE];	// receive buffer
-	uint buf_avail;
-	uint buf_pos;
+	uint_t buf_avail;
+	uint_t buf_pos;
 
 	uchar *packet;			// packet being processed
 	uchar packet_type;
-	uint packet_len;
-	
+	uint_t packet_len;
+
 	wmr_meta meta;			// system meta-packet in making
 
 	struct wmr_handler *handler;	// handlers

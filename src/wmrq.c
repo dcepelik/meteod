@@ -22,13 +22,13 @@
 #include "serialize.h"
 #include "loggers/file.h"
 
-#define ARRAY_ELEM		unsigned char
-#define ARRAY_PREFIX(x)		byte_##x
+#define	ARRAY_ELEM		unsigned char
+#define	ARRAY_PREFIX(x)		byte_##x
 #include "array.h"
 
 
-#define BUF_LEN		256	/* B */
-#define DEFAULT_PORT	20892
+#define	BUF_LEN		256	/* B */
+#define	DEFAULT_PORT	20892
 
 
 int
@@ -44,14 +44,15 @@ main(int argc, const char *argv[]) {
 	hostname = argv[1];
 	portstr = argv[2];
 
-	memset(&hints, 0, sizeof(hints));
+	memset(&hints, 0, sizeof (hints));
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = 0;
 	hints.ai_protocol = 0;
 
 	if ((ret = getaddrinfo(hostname, portstr, &hints, &srvinfo)) != 0)
-		errx(EXIT_FAILURE, "getaddrinfo failed for '%s': %s\n", hostname, gai_strerror(ret));
+		errx(EXIT_FAILURE, "getaddrinfo failed for '%s': %s\n",
+			hostname, gai_strerror(ret));
 
 	for (rp = srvinfo; rp != NULL; rp = rp->ai_next) {
 		fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
@@ -76,7 +77,7 @@ main(int argc, const char *argv[]) {
 	byte_array_init(&arr);
 
 	unsigned char buf[BUF_LEN];
-	while ((n = read(fd, &buf, sizeof(buf))) > 0) {
+	while ((n = read(fd, &buf, sizeof (buf))) > 0) {
 		byte_array_push_n(&arr, &buf[0], n);
 	}
 
@@ -85,7 +86,7 @@ main(int argc, const char *argv[]) {
 	wmr_latest_data data;
 	deserialize_data(&arr, &data);
 
-	(void)close(fd);
+	(void) close(fd);
 	DEBUG_MSG("%s", "Connection to server closed");
 
 	return (EXIT_SUCCESS);

@@ -18,7 +18,7 @@
 #include <time.h>
 
 
-#define RRD_ROOT_PATH "/var/wmrd/rrd"			// TODO
+#define	RRD_ROOT_PATH "/var/wmrd/rrd"			// TODO
 
 
 static void
@@ -56,8 +56,7 @@ log_wind(wmr_wind *wind) {
 		&data,
 		"%.1f:%.1f",
 		wind->avg_speed,
-		wind->gust_speed
-	);
+		wind->gust_speed);
 
 	write_rrd(WIND_RRD, &data);
 	strbuf_free(&data);
@@ -72,8 +71,7 @@ log_rain(wmr_rain *rain) {
 		&data,
 		"%.1f:%.0f",
 		rain->rate,
-		rain->accum_2007
-	);
+		rain->accum_2007);
 
 	write_rrd(RAIN_RRD, &data);
 	strbuf_free(&data);
@@ -87,8 +85,7 @@ log_uvi(wmr_uvi *uvi) {
 	strbuf_append(
 		&data,
 		"%u",
-		uvi->index
-	);
+		uvi->index);
 
 	write_rrd(UVI_RRD, &data);
 	strbuf_free(&data);
@@ -103,8 +100,7 @@ log_baro(wmr_baro *baro) {
 		&data,
 		"%u:%u",
 		baro->pressure,
-		baro->alt_pressure
-	);
+		baro->alt_pressure);
 
 	write_rrd(BARO_RRD, &data);
 	strbuf_free(&data);
@@ -120,8 +116,7 @@ log_temp(wmr_temp *temp) {
 		"%.1f:%u:%.1f",
 		temp->temp,
 		temp->humidity,
-		temp->dew_point
-	);
+		temp->dew_point);
 
 	strbuf filename; // filename depends on sensor ID
 	strbuf_init(&filename);
@@ -158,6 +153,3 @@ log_to_rrd(wmr_reading *reading, char *rrd_file) {
 		break;
 	}
 }
-
-
-

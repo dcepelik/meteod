@@ -10,7 +10,7 @@
 
 
 #ifndef SERIALIZE_H
-#define SERIALIZE_H
+#define	SERIALIZE_H
 
 
 #include "wmrdata.h"

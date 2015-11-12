@@ -9,7 +9,7 @@
  */
 
 #ifndef SERVER_H
-#define SERVER_H
+#define	SERVER_H
 
 #include "wmr200.h"
 
@@ -21,20 +21,16 @@ typedef struct {
 } wmr_server;
 
 
-void
-server_init(wmr_server *srv);
+void server_init(wmr_server *srv);
 
 
-void
-server_push_reading(wmr_server *srv, wmr_reading *reading);
+void server_push_reading(wmr_server *srv, wmr_reading *reading);
 
 
-int
-server_start(wmr_server *srv);
+int server_start(wmr_server *srv);
 
 
-void
-server_stop(wmr_server *srv);
+void server_stop(wmr_server *srv);
 
 
 #endif

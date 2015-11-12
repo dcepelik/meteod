@@ -9,18 +9,18 @@
  */
 
 #ifndef WMRDATA_H
-#define WMRDATA_H
+#define	WMRDATA_H
 
 #include "common.h"
 
 
-#define WMR_WIND		0xD3
-#define WMR_RAIN		0xD4
-#define WMR_UVI			0xD5
-#define WMR_BARO		0xD6
-#define WMR_TEMP		0xD7
-#define WMR_STATUS		0xD9
-#define WMR_META		0xFF		// system meta-packet
+#define	WMR_WIND		0xD3
+#define	WMR_RAIN		0xD4
+#define	WMR_UVI			0xD5
+#define	WMR_BARO		0xD6
+#define	WMR_TEMP		0xD7
+#define	WMR_STATUS		0xD9
+#define	WMR_META		0xFF		// system meta-packet
 
 
 typedef struct {
@@ -39,21 +39,21 @@ typedef struct {
 	float rate;		// immediate rain rate, mm/m^2
 	float accum_hour;	// rain last hour, mm/m^2
 	float accum_24h;	// rain 24 hours (without rain_hour), mm/m^2
-	float accum_2007;	// accumulated rain since 2007-01-01 12:00, mm/m^2
+	float accum_2007;	// accum rain since 2007-01-01 12:00, mm/m^2
 } wmr_rain;
 
 
 typedef struct {
 	time_t time;
-	uint index;		// "UV index", value in range 0..15
+	uint_t index;		// "UV index", value in range 0..15
 } wmr_uvi;
 
 
 typedef struct {
 	time_t time;
 
-	uint pressure;		// immediate pressure, hPa
-	uint alt_pressure;	// TODO
+	uint_t pressure;		// immediate pressure, hPa
+	uint_t alt_pressure;	// TODO
 	const char *forecast;	// name of "forecast icon", see `wmr200.c'
 } wmr_baro;
 
@@ -61,9 +61,9 @@ typedef struct {
 typedef struct {
 	time_t time;
 
-	uint sensor_id;		// ID in range 0..MAX_EXT_SENSORS, 0 = console
-	uint humidity;		// relative humidity, percent
-	uint heat_index;	// value 0..4, 0 = undefined (temp too low)
+	uint_t sensor_id;	// ID in range 0..MAX_EXT_SENSORS, 0 = console
+	uint_t humidity;	// relative humidity, percent
+	uint_t heat_index;	// value 0..4, 0 = undefined (temp too low)
 	float temp;		// temperature, deg C
 	float dew_point;	// dew point, deg C
 } wmr_temp;
@@ -89,17 +89,17 @@ typedef struct {
 typedef struct {
 	time_t time;
 
-	uint num_packets;
-	uint num_failed;
-	uint num_frames;
+	uint_t num_packets;
+	uint_t num_failed;
+	uint_t num_frames;
 	float error_rate;
-	ulong num_bytes;
+	ulong_t num_bytes;
 	time_t latest_packet;
 } wmr_meta;
 
 
 typedef struct {
-	uint type;
+	uint_t type;
 	union {
 		wmr_wind wind;
 		wmr_rain rain;

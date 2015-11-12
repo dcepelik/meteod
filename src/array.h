@@ -24,10 +24,10 @@
 #endif
 
 
-#define P(x)	ARRAY_PREFIX(x)
+#define	P(x)	ARRAY_PREFIX(x)
 
 
-#define DEFAULT_CAPACITY	8 /* elems */
+#define	DEFAULT_CAPACITY	8 /* elems */
 
 
 struct P(array) {
@@ -44,7 +44,10 @@ P(array_push_prepare)(struct P(array) *arr, size_t new_count) {
 	size_t new_capacity;
 
 	if (arr->size + arr->offset + new_count > arr->capacity) {
-		new_capacity = MAX(2 * arr->capacity, arr->size + arr->offset + new_count);
+		new_capacity = MAX(
+			2 * arr->capacity,
+			arr->size + arr->offset + new_count);
+
 		DEBUG_MSG("Expanding array capacity from %zu to %zu elements",
 			arr->capacity, new_capacity);
 
@@ -91,7 +94,7 @@ P(array_push_n)(struct P(array) *arr, ARRAY_ELEM *new_elems, size_t new_count) {
 
 	P(array_push_prepare)(arr, new_count);
 	for (i = 0; i < new_count; i++) {
-	 	arr->elems[arr->size++] = new_elems[i];
+		arr->elems[arr->size++] = new_elems[i];
 	}
 }
 
@@ -101,8 +104,8 @@ P(array_pop)(struct P(array) *arr) {
 	if (arr->size == 0) {
 		die("Cannot pop empty array\n");
 	}
-	
-	return arr->elems[--arr->size];
+
+	return (arr->elems[--arr->size]);
 }
 
 
@@ -114,7 +117,7 @@ P(array_shift)(struct P(array) *arr) {
 
 	arr->size--;
 	arr->offset++;
-	return *(arr->elems++);
+	return (*(arr->elems++));
 }
 
 
@@ -126,13 +129,13 @@ P(array_unshift)(struct P(array) *arr, ARRAY_ELEM elem) {
 
 static inline ARRAY_ELEM
 P(array_first)(struct P(array) *arr) {
-	return arr->elems[0];
+	return (arr->elems[0]);
 }
 
 
 static inline ARRAY_ELEM
 P(array_last)(struct P(array) *arr) {
-	return arr->elems[arr->size - 1];
+	return (arr->elems[arr->size - 1]);
 }
 
 

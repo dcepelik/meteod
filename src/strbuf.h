@@ -10,15 +10,15 @@
 
 
 #ifndef STRBUF_H
-#define STRBUF_H
+#define	STRBUF_H
 
 #include "common.h"
 #include <stdarg.h>
 
 
 
-#define STRBUF_INIT_SIZE 1024
-#define STRBUF_GROWTH_RATE 2
+#define	STRBUF_INIT_SIZE 1024
+#define	STRBUF_GROWTH_RATE 2
 
 
 typedef struct {
@@ -62,7 +62,7 @@ void strbuf_append(strbuf *buf, char *format, ...);
 /*
  * Copy the string and return pointer to the copy.
  */
-char *strbuf_copy(strbuf *buf); 
+char *strbuf_copy(strbuf *buf);
 
 
 /*

@@ -17,18 +17,20 @@
 #include <endian.h>		/* TODO this ain't POSIX compliant module */
 
 
-#define ARRAY_ELEM		unsigned char
-#define ARRAY_PREFIX(x)		byte_##x
+#define	ARRAY_ELEM		unsigned char
+#define	ARRAY_PREFIX(x)		byte_##x
 #include "array.h"
 
 
-/********************** (de)serialization of primitives  **********************/
+/*
+ * (De)serialization of primitives
+ */
 
 
 static void
 serialize_long(struct byte_array *arr, long l) {
 	long nl = htobe64(l);
-	byte_array_push_n(arr, (unsigned char *)&nl, sizeof(nl));
+	byte_array_push_n(arr, (unsigned char *)&nl, sizeof (nl));
 }
 
 
@@ -37,11 +39,11 @@ deserialize_long(struct byte_array *arr) {
 	long be64 = 0;
 	int i;
 
-	for (i = 0; i < sizeof(be64); i++) {
+	for (i = 0; i < sizeof (be64); i++) {
 		((char *)&be64)[i] = byte_array_shift(arr);
 	}
 
-	return be64toh(be64);
+	return (be64toh(be64));
 }
 
 
@@ -53,7 +55,7 @@ serialize_int(struct byte_array *arr, int i) {
 
 static int
 deserialize_int(struct byte_array *arr) {
-	return (int)deserialize_long(arr);
+	return ((int)deserialize_long(arr));
 }
 
 
@@ -65,7 +67,7 @@ serialize_char(struct byte_array *arr, char c) {
 
 static char
 deserialize_char(struct byte_array *arr) {
-	return byte_array_pop(arr);
+	return (byte_array_pop(arr));
 }
 
 
@@ -76,7 +78,7 @@ serialize_float(struct byte_array *arr, float f) {
 
 static float
 deserialize_float(struct byte_array *arr) {
-	return 0;
+	return (0);
 }
 
 
@@ -109,11 +111,13 @@ deserialize_string(struct byte_array *arr) {
 	char *out_str = strbuf_copy(&str);
 	strbuf_free(&str);
 
-	return out_str;
+	return (out_str);
 }
 
 
-/********************** (de)serialization of WMR data **********************/
+/*
+ * (De)serialization of WMR data
+ */
 
 
 static void
@@ -279,87 +283,9 @@ deserialize_meta(struct byte_array *arr, wmr_meta *meta) {
 }
 
 
-/* TODO this ain't needed anymore, screw this?
-void
-serialize_reading(struct byte_array *arr, wmr_reading *reading) {
-	serialize_int(arr, reading->type);
-
-	switch (reading->type) {
-	case WMR_WIND:
-		serialize_wind(arr, &reading->wind);
-		break;
-
-	case WMR_RAIN:
-		serialize_rain(arr, &reading->rain);
-		break;
-
-	case WMR_UVI:
-		serialize_uvi(arr, &reading->uvi);
-		break;
-
-	case WMR_BARO:
-		serialize_baro(arr, &reading->baro);
-		break;
-
-	case WMR_TEMP:
-		serialize_temp(arr, &reading->temp);
-		break;
-
-	case WMR_STATUS:
-		serialize_status(arr, &reading->status);
-		break;
-
-	case WMR_META:
-		serialize_meta(arr, &reading->meta);
-		break;
-
-	default:
-		die("Cannot serialize reading of type %02x\n", reading->type);
-	}
-}
-
-
-void
-deserialize_reading(struct byte_array *arr, wmr_reading *reading) {
-	reading->type = deserialize_int(arr);
-
-	switch (reading->type) {
-	case WMR_WIND:
-		deserialize_wind(arr, &reading->wind);
-		break;
-
-	case WMR_RAIN:
-		deserialize_rain(arr, &reading->rain);
-		break;
-
-	case WMR_UVI:
-		deserialize_uvi(arr, &reading->uvi);
-		break;
-
-	case WMR_BARO:
-		deserialize_baro(arr, &reading->baro);
-		break;
-
-	case WMR_TEMP:
-		deserialize_temp(arr, &reading->temp);
-		break;
-
-	case WMR_STATUS:
-		deserialize_status(arr, &reading->status);
-		break;
-
-	case WMR_META:
-		deserialize_meta(arr, &reading->meta);
-		break;
-
-	default:
-		die("Cannot serialize reading of type %02x\n", reading->type);
-	}
-}
-*/
-
-
-/********************** public interface **********************/
+/*
+ * public interface
+ */
 
 
 void

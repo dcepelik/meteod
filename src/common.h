@@ -10,22 +10,24 @@
 
 
 #ifndef COMMON_H
-#define COMMON_H
+#define	COMMON_H
 
 #include <stdlib.h>
+#include <stdint.h>
 
 
-#define MAX(a, b)		((a) > (b) ? (a) : (b))
+#define	MAX(a, b)		((a) > (b) ? (a) : (b))
 
 
-#define DEBUG_MSG(fmt, ...) do { \
+#define	DEBUG_MSG(fmt, ...) do { \
 	if (DEBUG) fprintf(stderr, "*** DEBUG *** " fmt " at %s:%d\n", \
-		 __VA_ARGS__, __FILE__, __LINE__); \
+		__VA_ARGS__, __FILE__, __LINE__); \
 } while (0);
 
 
-typedef unsigned int		uint;
 typedef unsigned char		uchar;
+typedef uint32_t		uint_t;
+typedef uint64_t		ulong_t;
 
 
 void *die(char *format, ...);

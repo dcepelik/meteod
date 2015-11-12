@@ -61,14 +61,11 @@ main(int argc, const char *argv[]) {
 	/* wait for SIGINT/SIGKILL to arrive, then shutdown */
 	pause();
 
-	//pthread_cancel(comm_thread);
+	// pthread_cancel(comm_thread);
 	server_stop(&srv);
 
-	//pthread_join(comm_thread, NULL);
+	// pthread_join(comm_thread, NULL);
 
 	fprintf(stderr, "\n\n%s: graceful termination\n", argv[0]);
 	return (EXIT_SUCCESS);
 }
-
-
-

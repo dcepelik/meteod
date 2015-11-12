@@ -131,6 +131,3 @@ log_to_file(wmr_reading *reading, FILE *stream) {
 		break;
 	}
 }
-
-
-
