@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
+#include <pthread.h>
 
 #include <hidapi.h>
 
@@ -33,7 +34,7 @@
 #define	LOGGER_DATA_ERASE	0xDB
 #define	COMMUNICATION_STOP	0xDF
 
-#define	HEARTBEAT_INTERVAL	30 // s
+#define	HEARTBEAT_INTERVAL	30 /* s */
 
 #define	SIGN_POSITIVE		0x0
 #define	SIGN_NEGATIVE		0x8
@@ -45,7 +46,8 @@
 
 
 struct wmr_handler {
-	void (*handler)(wmr_reading *);
+	wmr_handler_t handler;
+	void *arg;
 	struct wmr_handler *next;
 };
 
@@ -58,7 +60,7 @@ wmr200 *wmr_global; // TODO
  */
 
 
-const char *LEVEL[] = {		// level (signal, battery)
+const char *LEVEL[] = {		/* level (signal, battery) */
 	"ok",
 	"low"
 };
@@ -162,7 +164,7 @@ static void
 invoke_handlers(wmr200 *wmr, wmr_reading *reading) {
 	struct wmr_handler *handler = wmr->handler;
 	while (handler != NULL) {
-		handler->handler(reading);
+		handler->handler(reading, handler->arg);
 		handler = handler->next;
 	}
 }
@@ -172,9 +174,9 @@ static void
 process_wind_data(wmr200 *wmr, uchar *data) {
 	/* BEGIN CSTYLED */
 	uint_t dir_flag		= LOW(data[7]);
-	float gust_speed	= (256 * LOW(data[10]) +      data[9])   / 10.0;
+	float gust_speed	= (256 * LOW(data[10]) +      data[ 9])  / 10.0;
 	float avg_speed		= ( 16 * LOW(data[11]) + HIGH(data[10])) / 10.0;
-	float chill		= data[12]; // (data[12] - 32) / 1.8;
+	float chill		= data[12]; /* (data[12] - 32) / 1.8; */
 	/* END CSTYLED */
 
 	invoke_handlers(wmr, &(wmr_reading) {
@@ -192,10 +194,12 @@ process_wind_data(wmr200 *wmr, uchar *data) {
 
 static void
 process_rain_data(wmr200 *wmr, uchar *data) {
-	float rate		= (256 * data[8]  +  data[7]) * 25.4;
-	float accum_hour	= (256 * data[10] +  data[9]) * 25.4;
+	/* BEGIN CSTYLED */
+	float rate		= (256 * data[ 8] + data[ 7]) * 25.4;
+	float accum_hour	= (256 * data[10] + data[ 9]) * 25.4;
 	float accum_24h		= (256 * data[12] + data[11]) * 25.4;
 	float accum_2007 	= (256 * data[14] + data[13]) * 25.4;
+	/* END CSTYLED */
 
 	invoke_handlers(wmr, &(wmr_reading) {
 		.type = WMR_RAIN,
@@ -334,8 +338,11 @@ process_historic_data(wmr200 *wmr, uchar *data) {
 
 static void
 emit_meta_packet(wmr200 *wmr) {
+	DEBUG_MSG("Emitting system META packet 0x%02X\n", WMR_META);
+
 	wmr->meta.time = time(NULL);
-	wmr->meta.error_rate = wmr->meta.num_failed / wmr->meta.num_packets;
+	wmr->meta.error_rate =
+		wmr->meta.num_failed / (float)wmr->meta.num_packets;
 
 	invoke_handlers(wmr, &(wmr_reading) {
 		.type = WMR_META,
@@ -411,7 +418,7 @@ dispatch_packet(wmr200 *wmr) {
 
 
 static void
-main_loop(wmr200 *wmr) {
+mainloop(wmr200 *wmr) {
 	while (1) {
 		wmr->packet_type = read_byte(wmr);
 
@@ -456,7 +463,7 @@ act_on_packet_type:
 		wmr->meta.num_packets++;
 
 		if (verify_packet(wmr) != 0) {
-			fprintf(stderr, "Packet incorrect, dropping\n");
+			DEBUG_MSG("%s", "Packet incorrect, dropping");
 			wmr->meta.num_failed++;
 			continue;
 		}
@@ -469,6 +476,15 @@ act_on_packet_type:
 
 		free(wmr->packet);
 	}
+}
+
+
+void *
+mainloop_pthread(void *arg) {
+	wmr200 *wmr = (wmr200 *)arg;
+	mainloop(wmr); // TODO register any cleanup handlers here?
+
+	return NULL;
 }
 
 
@@ -518,18 +534,19 @@ wmr_open() {
 
 	wmr->dev = hid_open(VENDOR_ID, PRODUCT_ID, NULL);
 	if (wmr->dev == NULL) {
-		DEBUG_MSG("%s", "hid_open(): cannot connect to WRM200");
+		DEBUG_MSG("%s", "hid_open: cannot connect to WRM200");
 		return (NULL);
 	}
 
 	wmr->packet = NULL;
 	wmr->buf_avail = wmr->buf_pos = 0;
+	wmr->thread_id = -1;
 	wmr->handler = NULL;
 	memset(&wmr->meta, 0, sizeof (wmr_meta));
 
 	wmr_global = wmr; // TODO
 
-	// some kind of a wake-up command
+	/* some kind of a wake-up command */
 	uchar abracadabra[8] = {
 		0x20, 0x00, 0x08, 0x01,
 		0x00, 0x00, 0x00, 0x00
@@ -555,6 +572,8 @@ wmr_close(wmr200 *wmr) {
 		send_cmd_frame(wmr, COMMUNICATION_STOP);
 		hid_exit();
 	}
+
+	free(wmr);
 }
 
 
@@ -570,16 +589,29 @@ wmr_end() {
 }
 
 
-void
-wmr_main_loop(wmr200 *wmr) {
-	main_loop(wmr);
+int
+wmr_start(wmr200 *wmr) {
+	if (pthread_create(&wmr->thread_id, NULL, mainloop_pthread, wmr) != 0) {
+		DEBUG_MSG("%s", "Cannot start main WMR comm loop");
+		return (-1);
+	}
+
+	return (0);
 }
 
 
 void
-wmr_set_handler(wmr200 *wmr, void (*handler)(wmr_reading *)) {
+wmr_stop(wmr200 *wmr) {
+	pthread_cancel(wmr->thread_id);
+	pthread_join(wmr->thread_id, NULL);
+}
+
+
+void
+wmr_add_handler(wmr200 *wmr, wmr_handler_t handler, void *arg) {
 	struct wmr_handler *wh = malloc_safe(sizeof (struct wmr_handler));
 	wh->handler = handler;
+	wh->arg = arg;
 	wh->next = wmr->handler;
 	wmr->handler = wh;
 }

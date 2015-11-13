@@ -129,8 +129,8 @@ log_temp(wmr_temp *temp) {
 }
 
 
-void
-log_to_rrd(wmr_reading *reading, char *rrd_file) {
+static void
+log_reading(wmr_reading *reading, char *rrd_file) {
 	switch (reading->type) {
 	case WMR_WIND:
 		log_wind(&reading->wind);
@@ -152,4 +152,16 @@ log_to_rrd(wmr_reading *reading, char *rrd_file) {
 		log_temp(&reading->temp);
 		break;
 	}
+}
+
+
+/*
+ * public interface
+ */
+
+
+void
+rrd_push_reading(wmr_reading *reading, void *arg) {
+	char *rrd_file = (char *)arg;
+	log_reading(reading, rrd_file);
 }

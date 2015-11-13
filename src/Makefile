@@ -7,6 +7,7 @@ CFLAGS=-c \
 	`pkg-config --cflags hidapi-libusb librrd` \
 	-Wall --pedantic -g \
 	-Wno-unused-function \
+	-DDEBUG \
 	-I.
 
 LDFLAGS=`pkg-config --libs hidapi-libusb librrd` \

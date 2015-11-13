@@ -22,7 +22,7 @@
 #define	TEMPN_RRD	"temp%i.rrd"
 
 
-void log_to_rrd(wmr_reading *reading, char *rrd_file);
+void rrd_push_reading(wmr_reading *reading, void *arg);
 
 
 #endif

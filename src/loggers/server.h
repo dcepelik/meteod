@@ -24,7 +24,7 @@ typedef struct {
 void server_init(wmr_server *srv);
 
 
-void server_push_reading(wmr_server *srv, wmr_reading *reading);
+void server_push_reading(wmr_reading *reading, void *arg);
 
 
 int server_start(wmr_server *srv);

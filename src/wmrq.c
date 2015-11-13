@@ -86,6 +86,11 @@ main(int argc, const char *argv[]) {
 	wmr_latest_data data;
 	deserialize_data(&arr, &data);
 
+	file_push_reading(&(wmr_reading) {
+		.type = WMR_WIND,
+		.wind = data.wind
+	}, stderr);
+
 	(void) close(fd);
 	DEBUG_MSG("%s", "Connection to server closed");
 

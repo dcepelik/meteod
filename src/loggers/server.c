@@ -80,6 +80,40 @@ mainloop_pthread(void *x) {
 }
 
 
+static void
+log_reading(wmr_server *srv, wmr_reading *reading) {
+	switch (reading->type) {
+	case WMR_WIND:
+		srv->data.wind = reading->wind;
+		break;
+
+	case WMR_RAIN:
+		srv->data.rain = reading->rain;
+		break;
+
+	case WMR_UVI:
+		srv->data.uvi = reading->uvi;
+		break;
+
+	case WMR_BARO:
+		srv->data.baro = reading->baro;
+		break;
+
+	case WMR_TEMP:
+		srv->data.temp[reading->temp.sensor_id] = reading->temp;
+		break;
+
+	case WMR_STATUS:
+		srv->data.status = reading->status;
+		break;
+
+	case WMR_META:
+		srv->data.meta = reading->meta;
+		break;
+	}
+}
+
+
 /*
  * public interface
  */
@@ -127,12 +161,13 @@ server_start(wmr_server *srv) {
 		return (-1);
 	}
 
+	DEBUG_MSG("Server start sucessfull, descriptor is %d", srv->fd);
+
 	if (pthread_create(&srv->thread_id, NULL, mainloop_pthread, srv) != 0) {
-		DEBUG_MSG("%s", "Cannot start main loop thread");
+		DEBUG_MSG("%s", "Cannot start main server loop");
 		return (-1);
 	}
 
-	DEBUG_MSG("Server start sucessfull, descriptor is %d", srv->fd);
 	return (0);
 }
 
@@ -145,34 +180,7 @@ server_stop(wmr_server *srv) {
 
 
 void
-server_push_reading(wmr_server *srv, wmr_reading *reading) {
-	switch (reading->type) {
-	case WMR_WIND:
-		srv->data.wind = reading->wind;
-		break;
-
-	case WMR_RAIN:
-		srv->data.rain = reading->rain;
-		break;
-
-	case WMR_UVI:
-		srv->data.uvi = reading->uvi;
-		break;
-
-	case WMR_BARO:
-		srv->data.baro = reading->baro;
-		break;
-
-	case WMR_TEMP:
-		srv->data.temp[reading->temp.sensor_id] = reading->temp;
-		break;
-
-	case WMR_STATUS:
-		srv->data.status = reading->status;
-		break;
-
-	case WMR_META:
-		srv->data.meta = reading->meta;
-		break;
-	}
+server_push_reading(wmr_reading *reading, void *arg) {
+	wmr_server *srv = (wmr_server *)arg;
+	log_reading(srv, reading);
 }

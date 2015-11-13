@@ -1,7 +1,6 @@
 /*
  * daemon.c:
- * Run this process as a secure system daemon
- *
+ * Run this process as a secure system daemon *
  * This software may be freely used and distributed according to the terms
  * of the GNU GPL version 2 or 3. See LICENSE for more information.
  *
@@ -22,7 +21,7 @@
 #include <string.h>
 
 
-void
+static void
 detach_from_parent(void) {
 	pid_t pid, newpid;
 	pid_t sid;
@@ -51,7 +50,7 @@ detach_from_parent(void) {
 }
 
 
-void
+static void
 jail(void) {
 	umask(227);
 
@@ -67,7 +66,7 @@ jail(void) {
 }
 
 
-void
+static void
 drop_root_privileges(void) {
 	gid_t group_id = 1001;
 	uid_t user_id = 1001;
@@ -86,6 +85,11 @@ drop_root_privileges(void) {
 
 	syslog(LOG_INFO, "Dropped root priviliges\n");
 }
+
+
+/*
+ * public interface
+ */
 
 
 void

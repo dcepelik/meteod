@@ -87,7 +87,6 @@ serialize_string(struct byte_array *arr, const char *str) {
 	if (str != NULL) {
 		int i = 0;
 		while (str[i] != '\0') {
-			DEBUG_MSG("Char: %i", str[i]);
 			byte_array_push(arr, str[i]);
 			i++;
 		}

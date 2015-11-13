@@ -16,7 +16,7 @@
 #include <stdio.h>
 
 
-void log_to_file(wmr_reading *reading, FILE *stream);
+void file_push_reading(wmr_reading *reading, void *arg);
 
 
 #endif

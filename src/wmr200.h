@@ -16,28 +16,33 @@
 
 #include <stdio.h>
 #include <hidapi.h>
+#include <pthread.h>
 
 
 #define	WMR200_FRAME_SIZE		8
 #define	WMR200_MAX_TEMP_SENSORS		10
 
 
+typedef void (*wmr_handler_t)(wmr_reading *reading, void *arg);
+
+
 struct wmr_handler;
 
 typedef struct {
-	hid_device *dev;		// HIDAPI device handle
+	hid_device *dev;		/* HIDAPI device handle */
+	pthread_t thread_id;		/* associated thread id */
+	wmr_meta meta;			/* system meta-packet being made */
+	struct wmr_handler *handler;	/* handlers */
 
-	uchar buf[WMR200_FRAME_SIZE];	// receive buffer
+	/* receive buffer */
+	uchar buf[WMR200_FRAME_SIZE];
 	uint_t buf_avail;
 	uint_t buf_pos;
 
-	uchar *packet;			// packet being processed
+	/* packet being processed */
+	uchar *packet;
 	uchar packet_type;
 	uint_t packet_len;
-
-	wmr_meta meta;			// system meta-packet in making
-
-	struct wmr_handler *handler;	// handlers
 } wmr200;
 
 
@@ -50,13 +55,16 @@ void wmr_end();
 wmr200 *wmr_open();
 
 
+int wmr_start(wmr200 *wmr);
+
+
+void wmr_stop(wmr200 *wmr);
+
+
 void wmr_close(wmr200 *wmr);
 
 
-void wmr_main_loop(wmr200 *wmr);
-
-
-void wmr_set_handler(wmr200 *wmr, void (*handler)(wmr_reading *));
+void wmr_add_handler(wmr200 *wmr, wmr_handler_t handler, void *arg);
 
 
 #endif

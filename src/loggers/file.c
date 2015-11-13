@@ -13,6 +13,11 @@
 #include "wmrdata.h"
 
 
+/*
+ * loggers for individual data readings
+ */
+
+
 static void
 log_wind(wmr_wind *wind, FILE *stream) {
 	fprintf(stream, "wind %li {\n", wind->time);
@@ -88,19 +93,19 @@ static void
 log_meta(wmr_meta *meta, FILE *stream) {
 	fprintf(stream, "meta %li {\n", meta->time);
 
-	fprintf(stream, "num_packets: %u", meta->num_packets);
-	fprintf(stream, "num_failed: %u", meta->num_failed);
-	fprintf(stream, "num_frames: %u", meta->num_frames);
-	fprintf(stream, "error_rate: %.1f", meta->error_rate);
-	fprintf(stream, "num_bytes: %li", meta->num_bytes);
-	fprintf(stream, "latest_packet: %li", meta->latest_packet);
+	fprintf(stream, "\tnum_packets: %u\n", meta->num_packets);
+	fprintf(stream, "\tnum_failed: %u\n", meta->num_failed);
+	fprintf(stream, "\tnum_frames: %u\n", meta->num_frames);
+	fprintf(stream, "\terror_rate: %.1f\n", meta->error_rate);
+	fprintf(stream, "\tnum_bytes: %li\n", meta->num_bytes);
+	fprintf(stream, "\tlatest_packet: %li\n", meta->latest_packet);
 
 	fprintf(stream, "}\n\n");
 }
 
 
-void
-log_to_file(wmr_reading *reading, FILE *stream) {
+static void
+log_reading(wmr_reading *reading, FILE *stream) {
 	switch (reading->type) {
 	case WMR_WIND:
 		log_wind(&reading->wind, stream);
@@ -130,4 +135,16 @@ log_to_file(wmr_reading *reading, FILE *stream) {
 		log_meta(&reading->meta, stream);
 		break;
 	}
+}
+
+
+/*
+ * public interface
+ */
+
+
+void
+file_push_reading(wmr_reading *reading, void *arg) {
+	FILE *stream = (FILE *)arg;
+	log_reading(reading, stream);
 }

@@ -21,54 +21,90 @@
 #include <string.h>
 #include <unistd.h>
 #include <syslog.h>
+#include <getopt.h>
+
+
+wmr_server srv;
+
+
+static struct option longopts[] = {
+	{ "daemon",	no_argument,	NULL,	'd' }};
 
 
 static void
-shutdown(int signum) {
+signal_handler(int signum) {
 	DEBUG_MSG("Caught signal %d (%s)", signum, strsignal(signum));
 }
 
 
-static void
-handler(wmr_reading *reading) {
-	log_to_file(reading, stdout);
-	log_to_rrd(reading, "/home/david/gymlit/tools/meteo/temp.rrd");
-}
-
-
 int
-main(int argc, const char *argv[]) {
-	daemonize(argv[0]);
-
+main(int argc, char *argv[]) {
 	sigset_t set, oldset;
-	wmr_server srv;
+	wmr200 *wmr;
+	int c, dflag = 0;
 
-	/* mask SIGINT and SIGTERM away from spawned processes */
+	while ((c = getopt_long(argc, argv, "d", longopts, NULL)) != -1) {
+		switch (c) {
+		case 'd':
+			dflag = 1;
+			break;
+
+		default:
+			fprintf(stderr, "%s: usage: %s [OPTIONS]\n",
+				argv[0], argv[0]);
+			fprintf(stderr,
+				"\t-d, --daemonize\t\tdaemonize the process\n"
+				"\t-c, --config FILE\tuse config file FILE\n"
+				"\t-S, --server\t\tuse logging server\n"
+				"\t-F, --file FILE\t\tlog readings to FILE\n"
+				"\t-R, --rrd DIR\t\tlog to RRDs in DIR\n"
+				"\n");
+
+			exit(EXIT_FAILURE);
+		}
+	}
+
 	sigemptyset(&set);
 	sigaddset(&set, SIGINT);
 	sigaddset(&set, SIGTERM);
 	pthread_sigmask(SIG_BLOCK, &set, &oldset);
 
-	server_init(&srv);
-	server_start(&srv);
+	wmr_init();
 
-	/* install signal handlers */
+	wmr = wmr_open();
+	if (wmr == NULL)
+		die("wmr_open: no WMR200 handle returned\n");
+
+	wmr_add_handler(wmr, file_push_reading, stderr);
+	wmr_add_handler(wmr, rrd_push_reading, "none");
+	wmr_add_handler(wmr, server_push_reading, &srv);
+
+	if (wmr_start(wmr) != 0)
+		die("wmr_start: cannot start WMR comm loop\n");
+
+	server_init(&srv);
+	if (server_start(&srv) != 0)
+		die("server_start: cannot start the WMR server instance\n");
+
+
 	struct sigaction sa;
-	sa.sa_handler = shutdown;
-	sa.sa_flags = 0;
+	memset(&sa, 0, sizeof (sa));
+	sa.sa_handler = signal_handler;
 	sigaction(SIGTERM, &sa, NULL);
 	sigaction(SIGINT, &sa, NULL);
 
-	/* restore original sigmask for this thread only */
 	pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 
-	/* wait for SIGINT/SIGKILL to arrive, then shutdown */
+	if (dflag) 
+		daemonize(argv[0]);
+
+	/* wait here for SIGINT/SIGTERM */
 	pause();
 
-	// pthread_cancel(comm_thread);
-	server_stop(&srv);
+	wmr_close(wmr);
+	wmr_end();
 
-	// pthread_join(comm_thread, NULL);
+	server_stop(&srv);
 
 	syslog(LOG_NOTICE, "%s: graceful termination\n", argv[0]);
 	return (EXIT_SUCCESS);
