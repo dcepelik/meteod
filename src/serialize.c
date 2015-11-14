@@ -14,6 +14,7 @@
 #include "strbuf.h"
 #include "common.h"
 
+#include <math.h>
 #include <endian.h>		/* TODO this ain't POSIX compliant module */
 
 
@@ -22,14 +23,37 @@
 #include "array.h"
 
 
+const double FLOAT_SCALE = (1L << 32);	/* scale float to int */
+
+
 /*
  * (De)serialization of primitives
  */
 
 
 static void
+serialize_char(struct byte_array *arr, char c) {
+	byte_array_push(arr, c);
+}
+
+
+static char
+deserialize_char(struct byte_array *arr) {
+	return (byte_array_shift(arr));
+}
+
+
+static void
 serialize_long(struct byte_array *arr, long l) {
-	long nl = htobe64(l);
+	long nl;
+	char sign;
+
+	sign = (l >= 0) ? (0) : (1);
+	l = labs(l);
+
+	nl = htobe64(l);
+	
+	serialize_char(arr, sign);
 	byte_array_push_n(arr, (unsigned char *)&nl, sizeof (nl));
 }
 
@@ -37,13 +61,15 @@ serialize_long(struct byte_array *arr, long l) {
 static long
 deserialize_long(struct byte_array *arr) {
 	long be64 = 0;
+	char sign;
 	int i;
 
+	sign = deserialize_char(arr);
 	for (i = 0; i < sizeof (be64); i++) {
 		((char *)&be64)[i] = byte_array_shift(arr);
 	}
 
-	return (be64toh(be64));
+	return (((sign == 0) ? (+1) : (-1)) * be64toh(be64));
 }
 
 
@@ -59,26 +85,43 @@ deserialize_int(struct byte_array *arr) {
 }
 
 
-static void
-serialize_char(struct byte_array *arr, char c) {
-	byte_array_push(arr, c);
-}
-
-
-static char
-deserialize_char(struct byte_array *arr) {
-	return (byte_array_pop(arr));
-}
-
-
-static void
+void
 serialize_float(struct byte_array *arr, float f) {
+	float fract;
+	int exp;
+	long ifract;
+	char sign;
+
+	sign = (f >= 0) ? (0) : (1);
+	f = fabs(f);
+
+	/* get fractional part and exponent */
+	fract = frexpf(f, &exp);
+
+	/* convert fractional part to integer */
+	ifract = trunc(fract * FLOAT_SCALE);
+
+	serialize_char(arr, sign);
+	serialize_long(arr, ifract);
+	serialize_int(arr, exp);
 }
 
 
-static float
+float
 deserialize_float(struct byte_array *arr) {
-	return (0);
+	float fract;
+	int exp;
+	long ifract;
+	char sign;
+
+	sign = deserialize_char(arr);
+	ifract = deserialize_long(arr);
+	exp = deserialize_int(arr);
+
+	fract = ifract / FLOAT_SCALE;
+	return ((sign == 0 ? (+1) : (-1)) * ldexpf(fract, exp));
+
+	return 0;
 }
 
 
@@ -87,12 +130,12 @@ serialize_string(struct byte_array *arr, const char *str) {
 	if (str != NULL) {
 		int i = 0;
 		while (str[i] != '\0') {
-			byte_array_push(arr, str[i]);
+			serialize_char(arr, str[i]);
 			i++;
 		}
 	}
 
-	byte_array_push(arr, '\0');
+	serialize_char(arr, '\0');
 }
 
 
@@ -102,10 +145,10 @@ deserialize_string(struct byte_array *arr) {
 
 	strbuf_init(&str);
 	while (byte_array_first(arr) != '\0') {
-		strbuf_append(&str, "%c", byte_array_shift(arr));
+		strbuf_append(&str, "%c", deserialize_char(arr));
 	}
 
-	byte_array_shift(arr); /* dump the '\0' */
+	(void) deserialize_char(arr); /* dump the '\0' */
 
 	char *out_str = strbuf_copy(&str);
 	strbuf_free(&str);

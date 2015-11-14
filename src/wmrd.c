@@ -24,6 +24,12 @@
 #include <getopt.h>
 
 
+#define	ARRAY_ELEM		unsigned char
+#define	ARRAY_PREFIX(x)		byte_##x
+#include "array.h"
+#include "serialize.h"
+
+
 wmr_server srv;
 
 
@@ -37,8 +43,24 @@ signal_handler(int signum) {
 }
 
 
+float deserialize_float(struct byte_array * arr);
+void serialize_float(struct byte_array * arr, float f);
+
+
 int
 main(int argc, char *argv[]) {
+	/*float f = 2/3.0;
+
+	struct byte_array arr;
+	byte_array_init(&arr);
+
+	serialize_float(&arr, f);
+
+	printf("%f\n", deserialize_float(&arr));
+	
+	return 0;
+	*/
+
 	sigset_t set, oldset;
 	wmr200 *wmr;
 	int c, dflag = 0;
