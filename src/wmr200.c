@@ -32,7 +32,7 @@
 #define	LOGGER_DATA_ERASE	0xDB
 #define	COMMUNICATION_STOP	0xDF
 
-#define	HEARTBEAT_INTERVAL_SEC	4
+#define	HEARTBEAT_INTERVAL_SEC	30
 
 #define	SIGN_POSITIVE		0x0
 #define	SIGN_NEGATIVE		0x8
@@ -100,11 +100,7 @@ read_byte(wmr200 *wmr) {
 		wmr->meta.num_frames++;
 
 		if (ret != WMR200_FRAME_SIZE) {
-			fprintf(stderr,
-				"hid_read: cannot read frame, return was %i\n",
-				ret);
-
-			exit(1);
+			DEBUG_MSG("%s", "Cannot read frame");
 		}
 
 		wmr->buf_avail = wmr->buf[0];
@@ -490,9 +486,10 @@ mainloop_pthread(void *arg) {
 static void
 heartbeat_loop(wmr200 *wmr) {
 	for (;;) {
-		usleep(HEARTBEAT_INTERVAL_SEC * 1e6);
 		send_heartbeat(wmr);
 		emit_meta_packet(wmr);
+
+		usleep(HEARTBEAT_INTERVAL_SEC * 1e6);
 	}
 }
 
@@ -517,7 +514,7 @@ wmr_open(void) {
 
 	wmr->dev = hid_open(VENDOR_ID, PRODUCT_ID, NULL);
 	if (wmr->dev == NULL) {
-		DEBUG_MSG("%s", "hid_open: cannot connect to WRM200");
+		DEBUG_MSG("%s", "hid_open: cannot connect to WMR200");
 		return (NULL);
 	}
 
@@ -545,8 +542,10 @@ wmr_open(void) {
 
 void
 wmr_close(wmr200 *wmr) {
-	if (wmr->dev != NULL)
+	if (wmr->dev != NULL) {
 		send_cmd_frame(wmr, COMMUNICATION_STOP);
+		hid_close(wmr->dev);
+	}
 
 	free(wmr);
 }
@@ -566,15 +565,15 @@ wmr_end(void) {
 
 int
 wmr_start(wmr200 *wmr) {
-	if (pthread_create(&wmr->mainloop_thread,
-		NULL, mainloop_pthread, wmr) != 0) {
-		DEBUG_MSG("%s", "Cannot start main communication loop thread");
-		return (-1);
-	}
-
 	if (pthread_create(&wmr->heartbeat_thread,
 		NULL, heartbeat_loop_pthread, wmr) != 0) {
 		DEBUG_MSG("%s", "Cannot start heartbeat loop thread");
+		return (-1);
+	}
+
+	if (pthread_create(&wmr->mainloop_thread,
+		NULL, mainloop_pthread, wmr) != 0) {
+		DEBUG_MSG("%s", "Cannot start main communication loop thread");
 		return (-1);
 	}
 
@@ -585,11 +584,11 @@ wmr_start(wmr200 *wmr) {
 
 void
 wmr_stop(wmr200 *wmr) {
-	pthread_cancel(wmr->mainloop_thread);
 	pthread_cancel(wmr->heartbeat_thread);
+	pthread_cancel(wmr->mainloop_thread);
 
-	pthread_join(wmr->mainloop_thread, NULL);
 	pthread_join(wmr->heartbeat_thread, NULL);
+	pthread_join(wmr->mainloop_thread, NULL);
 }
 
 

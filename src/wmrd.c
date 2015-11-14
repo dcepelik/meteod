@@ -101,10 +101,11 @@ main(int argc, char *argv[]) {
 	/* wait here for SIGINT/SIGTERM */
 	pause();
 
-	//wmr_close(wmr);
-	//wmr_end();
+	wmr_stop(wmr);
+	wmr_close(wmr);
+	wmr_end();
 
-	//server_stop(&srv);
+	server_stop(&srv);
 
 	syslog(LOG_NOTICE, "%s: graceful termination\n", argv[0]);
 	return (EXIT_SUCCESS);
