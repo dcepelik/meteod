@@ -38,8 +38,8 @@ write_rrd(char *file_rel_path, strbuf *data) {
 
 	int ret = rrd_update(3, update_params);
 	if (ret != 0) {
-		DEBUG_MSG("rrd_update() failed with return code %i\n", ret);
-		DEBUG_MSG("rrd_get_error(): %s\n", rrd_get_error());
+		DEBUG_MSG("rrd_update() failed with return code %i", ret);
+		DEBUG_MSG("rrd_get_error(): %s", rrd_get_error());
 
 		rrd_clear_error();
 	}

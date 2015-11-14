@@ -28,9 +28,10 @@ typedef void (*wmr_handler_t)(wmr_reading *reading, void *arg);
 
 struct wmr_handler;
 
-typedef struct {
+typedef struct { // move to .c
 	hid_device *dev;		/* HIDAPI device handle */
-	pthread_t thread_id;		/* associated thread id */
+	pthread_t mainloop_thread;	/* main loop thread id */
+	pthread_t heartbeat_thread;	/* heartbeat loop thread id */
 	wmr_meta meta;			/* system meta-packet being made */
 	struct wmr_handler *handler;	/* handlers */
 

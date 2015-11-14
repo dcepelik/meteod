@@ -34,7 +34,7 @@
 #define	LOGGER_DATA_ERASE	0xDB
 #define	COMMUNICATION_STOP	0xDF
 
-#define	HEARTBEAT_INTERVAL	30 /* s */
+#define	HEARTBEAT_INTERVAL_SEC	4
 
 #define	SIGN_POSITIVE		0x0
 #define	SIGN_NEGATIVE		0x8
@@ -338,11 +338,12 @@ process_historic_data(wmr200 *wmr, uchar *data) {
 
 static void
 emit_meta_packet(wmr200 *wmr) {
-	DEBUG_MSG("Emitting system META packet 0x%02X\n", WMR_META);
+	DEBUG_MSG("Emitting system META packet 0x%02X", WMR_META);
 
 	wmr->meta.time = time(NULL);
-	wmr->meta.error_rate =
-		wmr->meta.num_failed / (float)wmr->meta.num_packets;
+	wmr->meta.error_rate = (wmr->meta.num_packets > 0)
+		? (wmr->meta.num_failed / (float)wmr->meta.num_packets)
+		: 0;
 
 	invoke_handlers(wmr, &(wmr_reading) {
 		.type = WMR_META,
@@ -488,48 +489,32 @@ mainloop_pthread(void *arg) {
 }
 
 
-/*
- * heartbeat timer
- */
-
-
 static void
-alrm_handler(int signum) {
-	send_heartbeat(wmr_global);
-	emit_meta_packet(wmr_global);
+heartbeat_loop(wmr200 *wmr) {
+	for (;;) {
+		usleep(HEARTBEAT_INTERVAL_SEC * 1e6);
+		send_heartbeat(wmr);
+		emit_meta_packet(wmr);
+	}
 }
 
 
-static void
-setup_timer() {
-	struct sigaction sa;
-	sa.sa_handler = alrm_handler;
-	sa.sa_flags = SA_RESTART;
-	sigaction(SIGALRM, &sa, NULL); // TODO
-
-	struct itimerval itval;
-	itval.it_interval.tv_sec = HEARTBEAT_INTERVAL;
-	itval.it_value.tv_sec = HEARTBEAT_INTERVAL;
-	itval.it_interval.tv_usec = itval.it_value.tv_usec = 0;
-
-	setitimer(ITIMER_REAL, &itval, NULL);
-}
-
-
-
-static void
-stop_timer() {
-	// TODO
+static void *
+heartbeat_loop_pthread(void *arg) {
+	wmr200 *wmr = (wmr200 *)arg;
+	heartbeat_loop(wmr);
+	
+	return NULL;
 }
 
 
 /*
- * interface
+ * public interface
  */
 
 
 wmr200 *
-wmr_open() {
+wmr_open(void) {
 	wmr200 *wmr = malloc_safe(sizeof (wmr200));
 
 	wmr->dev = hid_open(VENDOR_ID, PRODUCT_ID, NULL);
@@ -540,7 +525,6 @@ wmr_open() {
 
 	wmr->packet = NULL;
 	wmr->buf_avail = wmr->buf_pos = 0;
-	wmr->thread_id = -1;
 	wmr->handler = NULL;
 	memset(&wmr->meta, 0, sizeof (wmr_meta));
 
@@ -557,53 +541,57 @@ wmr_open() {
 		return (NULL);
 	}
 
-	send_heartbeat(wmr);
-	setup_timer();
-
 	return (wmr);
 }
 
 
 void
 wmr_close(wmr200 *wmr) {
-	stop_timer();
-
-	if (wmr->dev != NULL) {
+	if (wmr->dev != NULL)
 		send_cmd_frame(wmr, COMMUNICATION_STOP);
-		hid_exit();
-	}
 
 	free(wmr);
 }
 
 
 void
-wmr_init() {
+wmr_init(void) {
 	hid_init();
 }
 
 
 void
-wmr_end() {
-	// TODO unregister handlers, stop the timer
+wmr_end(void) {
+	hid_exit();
 }
 
 
 int
 wmr_start(wmr200 *wmr) {
-	if (pthread_create(&wmr->thread_id, NULL, mainloop_pthread, wmr) != 0) {
-		DEBUG_MSG("%s", "Cannot start main WMR comm loop");
+	if (pthread_create(&wmr->mainloop_thread,
+		NULL, mainloop_pthread, wmr) != 0) {
+		DEBUG_MSG("%s", "Cannot start main communication loop thread");
 		return (-1);
 	}
 
+	if (pthread_create(&wmr->heartbeat_thread,
+		NULL, heartbeat_loop_pthread, wmr) != 0) {
+		DEBUG_MSG("%s", "Cannot start heartbeat loop thread");
+		return (-1);
+	}
+
+	DEBUG_MSG("%s", "wmr_start was succesfull");
 	return (0);
 }
 
 
 void
 wmr_stop(wmr200 *wmr) {
-	pthread_cancel(wmr->thread_id);
-	pthread_join(wmr->thread_id, NULL);
+	pthread_cancel(wmr->mainloop_thread);
+	pthread_cancel(wmr->heartbeat_thread);
+
+	pthread_join(wmr->mainloop_thread, NULL);
+	pthread_join(wmr->heartbeat_thread, NULL);
 }
 
 
