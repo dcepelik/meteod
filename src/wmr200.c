@@ -14,11 +14,9 @@
 #include "common.h"
 
 #include <stdio.h>
-#include <signal.h>
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
-#include <sys/time.h>
 #include <pthread.h>
 
 #include <hidapi.h>
