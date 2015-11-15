@@ -20,7 +20,7 @@
 
 #include "wmrdata.h"
 #include "serialize.h"
-#include "loggers/file.h"
+#include "loggers/yaml.h"
 
 #define	ARRAY_ELEM		unsigned char
 #define	ARRAY_PREFIX(x)		byte_##x
@@ -86,7 +86,7 @@ main(int argc, const char *argv[]) {
 	wmr_latest_data data;
 	deserialize_data(&arr, &data);
 
-	file_push_reading(&(wmr_reading) {
+	yaml_push_reading(&(wmr_reading) {
 		.type = WMR_WIND,
 		.wind = data.wind
 	}, stderr);

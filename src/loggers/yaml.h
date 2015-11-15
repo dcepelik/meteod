@@ -1,6 +1,6 @@
 /*
- * loggers/file.h:
- * Log WMR readings to a file
+ * loggers/yaml.h:
+ * Log readings in YAML to a file or stream
  *
  * This software may be freely used and distributed according to the terms
  * of the GNU GPL version 2 or 3. See LICENSE for more information.
@@ -12,11 +12,10 @@
 #ifndef LOGGERS_FILE_H
 #define	LOGGERS_FILE_H
 
-#include "wmr200.h"
-#include <stdio.h>
+#include "wmrdata.h"
 
 
-void file_push_reading(wmr_reading *reading, void *arg);
+void yaml_push_reading(wmr_reading *reading, void *arg);
 
 
 #endif

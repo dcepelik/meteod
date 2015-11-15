@@ -16,7 +16,7 @@ LDFLAGS=`pkg-config --libs hidapi-libusb librrd` \
 	-Wall
 
 OBJS=common.o wmr200.o strbuf.o serialize.o daemon.o server.o \
-	loggers/file.o loggers/rrd.o loggers/server.o
+	loggers/yaml.o loggers/rrd.o loggers/server.o
 
 BINS=wmrd wmrq
 
@@ -26,7 +26,7 @@ all: ${BINS}
 wmrd: wmrd.o ${OBJS}
 	${CC} ${LDFLAGS} -o $@ $^
 
-wmrq: wmrq.o common.o serialize.o loggers/file.o strbuf.o
+wmrq: wmrq.o common.o serialize.o loggers/yaml.o strbuf.o
 	${CC} ${LDFLAGS} -o $@ $^
 
 
@@ -38,9 +38,6 @@ serialize.o: serialize.c serialize.h wmrdata.h strbuf.h array.h common.h
 	${CC} ${CFLAGS} -o $@ $<
 
 server.o: server.c array.h common.h serialize.h
-	${CC} ${CFLAGS} -o $@ $<
-
-loggers/file.o: loggers/file.c loggers/file.h wmrdata.h
 	${CC} ${CFLAGS} -o $@ $<
 
 loggers/rrd.o: loggers/rrd.c loggers/rrd.h wmrdata.h strbuf.h common.h

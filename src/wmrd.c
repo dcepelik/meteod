@@ -11,7 +11,7 @@
 #include "wmr200.h"
 #include "daemon.h"
 #include "server.h"
-#include "loggers/file.h"
+#include "loggers/yaml.h"
 #include "loggers/rrd.h"
 #include "loggers/server.h"
 
@@ -97,7 +97,7 @@ main(int argc, char *argv[]) {
 	if (wmr == NULL)
 		die("wmr_open: no WMR200 handle returned\n");
 
-	wmr_add_handler(wmr, file_push_reading, stderr);
+	wmr_add_handler(wmr, yaml_push_reading, stderr);
 	wmr_add_handler(wmr, rrd_push_reading, "none");
 	wmr_add_handler(wmr, server_push_reading, &srv);
 
