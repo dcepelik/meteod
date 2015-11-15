@@ -262,7 +262,7 @@ static void
 process_temp_data(wmr200 *wmr, uchar *data) {
 	int sensor_id = LOW(data[7]);
 
-	// TODO
+	/* TODO */
 	if (sensor_id > 1) {
 		fprintf(stderr, "Unknown sensor, ID: %i\n", sensor_id);
 		exit(1);
@@ -389,7 +389,7 @@ verify_packet(wmr200 *wmr) {
 		return (-1);
 	}
 
-	// verify packet_len
+	/* verify packet_len */
 
 	return (0);
 }
@@ -455,14 +455,14 @@ act_on_packet_type:
 			continue;
 
 		case COMMUNICATION_STOP:
-			// ignore, response to prev COMMUNICATION_STOP packet
+			/* ignore, response to prev COMMUNICATION_STOP packet */
 			DEBUG_MSG("%s", "Ignoring COMMUNICATION_STOP packet");
 			break;
 		}
 
 		wmr->packet_len = read_byte(wmr);
 		if (wmr->packet_len >= 0xD0 && wmr->packet_len <= 0xDF) {
-			// this is packet type mark, not packet length
+			/* this is packet type mark, not packet length */
 			wmr->packet_type = wmr->packet_len;
 			goto act_on_packet_type;
 		}
@@ -497,7 +497,7 @@ act_on_packet_type:
 void *
 mainloop_pthread(void *arg) {
 	wmr200 *wmr = (wmr200 *)arg;
-	mainloop(wmr); // TODO register any cleanup handlers here?
+	mainloop(wmr); /* TODO register any cleanup handlers here? */
 
 	return NULL;
 }

@@ -18,7 +18,7 @@
 #include <time.h>
 
 
-#define	RRD_ROOT_PATH "/var/wmrd/rrd"			// TODO
+#define	RRD_ROOT_PATH "/var/wmrd/rrd"			/* TODO */
 
 
 static void
@@ -118,7 +118,7 @@ log_temp(wmr_temp *temp) {
 		temp->humidity,
 		temp->dew_point);
 
-	strbuf filename; // filename depends on sensor ID
+	strbuf filename; /* filename depends on sensor ID */
 	strbuf_init(&filename);
 	strbuf_append(&filename, TEMPN_RRD, temp->sensor_id);
 
