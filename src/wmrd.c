@@ -82,7 +82,7 @@ main(int argc, char *argv[]) {
 	if (wmr_start(wmr) != 0)
 		die("wmr_start: cannot start WMR comm loop\n");
 
-	server_init(&srv);
+	server_init(&srv, wmr);
 	if (server_start(&srv) != 0)
 		die("server_start: cannot start the WMR server instance\n");
 

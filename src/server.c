@@ -53,14 +53,12 @@ mainloop(wmr_server *srv) {
 		struct byte_array data;
 		byte_array_init(&data);
 
-		/*
-		serialize_data(&data, &srv->data);
+		serialize_data(&data, &srv->wmr->latest);
 
 		if (write(fd, data.elems, data.size) != data.size) {
 			fprintf(stderr, "Cannot send %zu bytes of data\n",
 				data.size);
 		}
-		*/
 
 		(void) close(fd);
 		DEBUG_MSG("%s", "Client socket closed");
@@ -86,7 +84,8 @@ mainloop_pthread(void *x) {
 
 
 void
-server_init(wmr_server *srv) {
+server_init(wmr_server *srv, wmr200 *wmr) {
+	srv->wmr = wmr;
 	srv->fd = srv->thread_id = -1;
 }
 

@@ -11,15 +11,17 @@
 #include <pthread.h>
 
 #include "wmrdata.h"
+#include "wmr200.h"
 
 
 typedef struct {
-	int fd;				/* server socket descriptor */
-	pthread_t thread_id;		/* server thread ID */
+	int fd;			/* server socket descriptor */
+	wmr200 *wmr;		/* the device we serve data for */
+	pthread_t thread_id;	/* server thread ID */
 } wmr_server;
 
 
-void server_init(wmr_server *srv);
+void server_init(wmr_server *srv, wmr200 *wmr);
 
 
 int server_start(wmr_server *srv);
