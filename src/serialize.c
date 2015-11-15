@@ -164,8 +164,6 @@ deserialize_string(struct byte_array *arr) {
 
 static void
 serialize_wind(struct byte_array *arr, wmr_wind *wind) {
-	serialize_long(arr, wind->time);
-
 	serialize_string(arr, wind->dir);
 	serialize_float(arr, wind->gust_speed);
 	serialize_float(arr, wind->avg_speed);
@@ -175,8 +173,6 @@ serialize_wind(struct byte_array *arr, wmr_wind *wind) {
 
 static void
 deserialize_wind(struct byte_array *arr, wmr_wind *wind) {
-	wind->time = deserialize_long(arr);
-
 	wind->dir = deserialize_string(arr);
 	wind->gust_speed = deserialize_float(arr);
 	wind->avg_speed = deserialize_float(arr);
@@ -186,8 +182,6 @@ deserialize_wind(struct byte_array *arr, wmr_wind *wind) {
 
 static void
 serialize_rain(struct byte_array *arr, wmr_rain *rain) {
-	serialize_long(arr, rain->time);
-
 	serialize_float(arr, rain->rate);
 	serialize_float(arr, rain->accum_hour);
 	serialize_float(arr, rain->accum_24h);
@@ -197,8 +191,6 @@ serialize_rain(struct byte_array *arr, wmr_rain *rain) {
 
 static void
 deserialize_rain(struct byte_array *arr, wmr_rain *rain) {
-	rain->time = deserialize_long(arr);
-
 	rain->rate = deserialize_float(arr);
 	rain->accum_hour = deserialize_float(arr);
 	rain->accum_24h = deserialize_float(arr);
@@ -208,22 +200,18 @@ deserialize_rain(struct byte_array *arr, wmr_rain *rain) {
 
 static void
 serialize_uvi(struct byte_array *arr, wmr_uvi *uvi) {
-	serialize_long(arr, uvi->time);
 	serialize_int(arr, uvi->index);
 }
 
 
 static void
 deserialize_uvi(struct byte_array *arr, wmr_uvi *uvi) {
-	uvi->time = deserialize_long(arr);
 	uvi->index = deserialize_int(arr);
 }
 
 
 static void
 serialize_baro(struct byte_array *arr, wmr_baro *baro) {
-	serialize_long(arr, baro->time);
-
 	serialize_int(arr, baro->pressure);
 	serialize_int(arr, baro->alt_pressure);
 	serialize_string(arr, baro->forecast);
@@ -232,8 +220,6 @@ serialize_baro(struct byte_array *arr, wmr_baro *baro) {
 
 static void
 deserialize_baro(struct byte_array *arr, wmr_baro *baro) {
-	baro->time = deserialize_long(arr);
-
 	baro->pressure = deserialize_int(arr);
 	baro->alt_pressure = deserialize_int(arr);
 	baro->forecast = deserialize_string(arr);
@@ -242,8 +228,6 @@ deserialize_baro(struct byte_array *arr, wmr_baro *baro) {
 
 static void
 serialize_temp(struct byte_array *arr, wmr_temp *temp) {
-	serialize_long(arr, temp->time);
-
 	serialize_int(arr, temp->sensor_id);
 	serialize_int(arr, temp->humidity);
 	serialize_int(arr, temp->heat_index);
@@ -254,7 +238,6 @@ serialize_temp(struct byte_array *arr, wmr_temp *temp) {
 
 static void
 deserialize_temp(struct byte_array *arr, wmr_temp *temp) {
-	temp->time = deserialize_long(arr);
 	temp->sensor_id = deserialize_int(arr);
 	temp->humidity = deserialize_int(arr);
 	temp->heat_index = deserialize_int(arr);
@@ -265,8 +248,6 @@ deserialize_temp(struct byte_array *arr, wmr_temp *temp) {
 
 static void
 serialize_status(struct byte_array *arr, wmr_status *status) {
-	serialize_long(arr, status->time);
-
 	serialize_string(arr, status->wind_bat);
 	serialize_string(arr, status->temp_bat);
 	serialize_string(arr, status->rain_bat);
@@ -283,8 +264,6 @@ serialize_status(struct byte_array *arr, wmr_status *status) {
 
 static void
 deserialize_status(struct byte_array *arr, wmr_status *status) {
-	status->time = deserialize_long(arr);
-
 	status->wind_bat = deserialize_string(arr);
 	status->temp_bat = deserialize_string(arr);
 	status->rain_bat = deserialize_string(arr);
@@ -301,8 +280,6 @@ deserialize_status(struct byte_array *arr, wmr_status *status) {
 
 static void
 serialize_meta(struct byte_array *arr, wmr_meta *meta) {
-	serialize_long(arr, meta->time);
-
 	serialize_int(arr, meta->num_packets);
 	serialize_int(arr, meta->num_failed);
 	serialize_int(arr, meta->num_frames);
@@ -314,8 +291,6 @@ serialize_meta(struct byte_array *arr, wmr_meta *meta) {
 
 static void
 deserialize_meta(struct byte_array *arr, wmr_meta *meta) {
-	meta->time = deserialize_long(arr);
-
 	meta->num_packets = deserialize_int(arr);
 	meta->num_failed = deserialize_int(arr);
 	meta->num_frames = deserialize_int(arr);

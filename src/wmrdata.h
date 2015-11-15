@@ -1,6 +1,6 @@
 /*
  * wmrdata.h:
- * WMR data structures (readings encapsulation)
+ * WMR data structures (encapsulation of readings) and utils
  *
  * This software may be freely used and distributed according to the terms
  * of the GNU GPL version 2 or 3. See LICENSE for more information.
@@ -12,6 +12,7 @@
 #define	WMRDATA_H
 
 #include "common.h"
+#include "strbuf.h"
 
 
 #define	WMR_WIND		0xD3
@@ -24,8 +25,6 @@
 
 
 typedef struct {
-	time_t time;
-
 	const char *dir;	// wind direction, see `wmr200.c'
 	float gust_speed;	// gust speed, m/s
 	float avg_speed;	// average speed, m/s
@@ -34,8 +33,6 @@ typedef struct {
 
 
 typedef struct {
-	time_t time;
-
 	float rate;		// immediate rain rate, mm/m^2
 	float accum_hour;	// rain last hour, mm/m^2
 	float accum_24h;	// rain 24 hours (without rain_hour), mm/m^2
@@ -44,14 +41,11 @@ typedef struct {
 
 
 typedef struct {
-	time_t time;
 	uint_t index;		// "UV index", value in range 0..15
 } wmr_uvi;
 
 
 typedef struct {
-	time_t time;
-
 	uint_t pressure;		// immediate pressure, hPa
 	uint_t alt_pressure;	// TODO
 	const char *forecast;	// name of "forecast icon", see `wmr200.c'
@@ -59,8 +53,6 @@ typedef struct {
 
 
 typedef struct {
-	time_t time;
-
 	uint_t sensor_id;	// ID in range 0..MAX_EXT_SENSORS, 0 = console
 	uint_t humidity;	// relative humidity, percent
 	uint_t heat_index;	// value 0..4, 0 = undefined (temp too low)
@@ -70,8 +62,6 @@ typedef struct {
 
 
 typedef struct {
-	time_t time;
-
 	const char *wind_bat;		// battery levels, see `wmr200.c'
 	const char *temp_bat;
 	const char *rain_bat;
@@ -87,8 +77,6 @@ typedef struct {
 
 
 typedef struct {
-	time_t time;
-
 	uint_t num_packets;
 	uint_t num_failed;
 	uint_t num_frames;
@@ -100,6 +88,7 @@ typedef struct {
 
 typedef struct {
 	uint_t type;
+	time_t time;
 	union {
 		wmr_wind wind;
 		wmr_rain rain;
@@ -121,6 +110,9 @@ typedef struct {
 	wmr_status status;
 	wmr_meta meta;
 } wmr_latest_data;
+
+
+char *wmr_sensor_name(wmr_reading *reading);
 
 
 #endif
