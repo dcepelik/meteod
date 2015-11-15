@@ -50,9 +50,6 @@ struct wmr_handler {
 };
 
 
-wmr200 *wmr_global; // TODO
-
-
 /*
  * flag-to-string arrays
  */
@@ -522,8 +519,6 @@ wmr_open(void) {
 	wmr->buf_avail = wmr->buf_pos = 0;
 	wmr->handler = NULL;
 	memset(&wmr->meta, 0, sizeof (wmr_meta));
-
-	wmr_global = wmr; // TODO
 
 	/* some kind of a wake-up command */
 	uchar abracadabra[8] = {
