@@ -27,7 +27,7 @@
 #include "array.h"
 
 
-#define	BUF_LEN		256	/* B */
+#define	BUF_LEN		256
 #define	DEFAULT_PORT	20892
 
 

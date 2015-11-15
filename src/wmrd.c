@@ -8,9 +8,9 @@
  * Copyright (c) 2015 David Čepelík <cepelik@gymlit.cz>
  */
 
-
 #include "wmr200.h"
 #include "daemon.h"
+#include "server.h"
 #include "loggers/file.h"
 #include "loggers/rrd.h"
 #include "loggers/server.h"
