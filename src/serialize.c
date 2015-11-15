@@ -300,6 +300,86 @@ deserialize_meta(struct byte_array *arr, wmr_meta *meta) {
 }
 
 
+static void
+serialize_reading(struct byte_array *arr, wmr_reading *reading) {
+	serialize_int(arr, reading->type);
+	serialize_long(arr, reading->time);
+
+	switch (reading->type) {
+	case WMR_WIND:
+		serialize_wind(arr, &reading->wind);
+		break;
+
+	case WMR_RAIN:
+		serialize_rain(arr, &reading->rain);
+		break;
+
+	case WMR_UVI:
+		serialize_uvi(arr, &reading->uvi);
+		break;
+
+	case WMR_BARO:
+		serialize_baro(arr, &reading->baro);
+		break;
+
+	case WMR_TEMP:
+		serialize_temp(arr, &reading->temp);
+		break;
+
+	case WMR_STATUS:
+		serialize_status(arr, &reading->status);
+		break;
+
+	case WMR_META:
+		serialize_meta(arr, &reading->meta);
+		break;
+
+	default:
+		die("Cannot serialize reading of type %02x\n", reading->type);
+	}
+}
+
+
+static void
+deserialize_reading(struct byte_array *arr, wmr_reading *reading) {
+	reading->type = deserialize_int(arr);
+	reading->time = deserialize_long(arr);
+
+	switch (reading->type) {
+	case WMR_WIND:
+		deserialize_wind(arr, &reading->wind);
+		break;
+
+	case WMR_RAIN:
+		deserialize_rain(arr, &reading->rain);
+		break;
+
+	case WMR_UVI:
+		deserialize_uvi(arr, &reading->uvi);
+		break;
+
+	case WMR_BARO:
+		deserialize_baro(arr, &reading->baro);
+		break;
+
+	case WMR_TEMP:
+		deserialize_temp(arr, &reading->temp);
+		break;
+
+	case WMR_STATUS:
+		deserialize_status(arr, &reading->status);
+		break;
+
+	case WMR_META:
+		deserialize_meta(arr, &reading->meta);
+		break;
+
+	default:
+		die("Cannot serialize reading of type %02x\n", reading->type);
+	}
+}
+
+
 /*
  * public interface
  */
@@ -307,22 +387,24 @@ deserialize_meta(struct byte_array *arr, wmr_meta *meta) {
 
 void
 serialize_data(struct byte_array *arr, wmr_latest_data *data) {
-	serialize_wind(arr, &data->wind);
-	serialize_rain(arr, &data->rain);
-	serialize_uvi(arr, &data->uvi);
-	serialize_baro(arr, &data->baro);
-	serialize_status(arr, &data->status);
-	serialize_meta(arr, &data->meta);
+	serialize_reading(arr, &data->wind);
+	serialize_reading(arr, &data->rain);
+	serialize_reading(arr, &data->uvi);
+	serialize_reading(arr, &data->baro);
+	//serialize_reading(arr, &data->temp);
+	serialize_reading(arr, &data->status);
+	serialize_reading(arr, &data->meta);
 }
 
 
 void
 deserialize_data(struct byte_array *arr, wmr_latest_data *data) {
-	deserialize_wind(arr, &data->wind);
-	deserialize_rain(arr, &data->rain);
-	deserialize_uvi(arr, &data->uvi);
-	deserialize_baro(arr, &data->baro);
-	deserialize_status(arr, &data->status);
-	deserialize_meta(arr, &data->meta);
+	deserialize_reading(arr, &data->wind);
+	deserialize_reading(arr, &data->rain);
+	deserialize_reading(arr, &data->uvi);
+	deserialize_reading(arr, &data->baro);
+	//deserialize_reading(arr, &data->temp);
+	deserialize_reading(arr, &data->status);
+	deserialize_reading(arr, &data->meta);
 
 }

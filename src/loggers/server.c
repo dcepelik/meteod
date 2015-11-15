@@ -12,34 +12,45 @@
 
 
 static void
+update_if_newer(wmr_reading *old, wmr_reading *new) {
+	if (new->time >= old->time) {
+		*old = *new;
+	}
+}
+
+
+static void
 log_reading(wmr_server *srv, wmr_reading *reading) {
+	/* TODO add "if-newer" checks */
+
 	switch (reading->type) {
 	case WMR_WIND:
-		srv->data.wind = reading->wind;
+		update_if_newer(&srv->data.wind, reading);
 		break;
 
 	case WMR_RAIN:
-		srv->data.rain = reading->rain;
+		update_if_newer(&srv->data.rain, reading);
 		break;
 
 	case WMR_UVI:
-		srv->data.uvi = reading->uvi;
+		update_if_newer(&srv->data.uvi, reading);
 		break;
 
 	case WMR_BARO:
-		srv->data.baro = reading->baro;
+		update_if_newer(&srv->data.baro, reading);
 		break;
 
 	case WMR_TEMP:
-		srv->data.temp[reading->temp.sensor_id] = reading->temp;
+		update_if_newer(&srv->data.temp[reading->temp.sensor_id],
+			reading);
 		break;
 
 	case WMR_STATUS:
-		srv->data.status = reading->status;
+		update_if_newer(&srv->data.status, reading);
 		break;
 
 	case WMR_META:
-		srv->data.meta = reading->meta;
+		update_if_newer(&srv->data.meta, reading);
 		break;
 	}
 }

@@ -5,8 +5,7 @@
  * This software may be freely used and distributed according to the terms
  * of the GNU GPL version 2 or 3. See LICENSE for more information.
  *
- * Copyright (c) 2015 David Čepelík <cepelik@gymlit.cz>
- */
+ * Copyright (c) 2015 David Čepelík <cepelik@gymlit.cz> */
 
 #ifndef WMRDATA_H
 #define	WMRDATA_H
@@ -102,13 +101,13 @@ typedef struct {
 
 
 typedef struct {
-	wmr_wind wind;
-	wmr_rain rain;
-	wmr_uvi uvi;
-	wmr_baro baro;
-	wmr_temp temp[10]; // TODO
-	wmr_status status;
-	wmr_meta meta;
+	wmr_reading wind;
+	wmr_reading rain;
+	wmr_reading uvi;
+	wmr_reading baro;
+	wmr_reading temp[10]; // TODO
+	wmr_reading status;
+	wmr_reading meta;
 } wmr_latest_data;
 
 

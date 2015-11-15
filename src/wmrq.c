@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <time.h>
 
 #include "wmrdata.h"
 #include "serialize.h"
@@ -88,7 +89,8 @@ main(int argc, const char *argv[]) {
 
 	yaml_push_reading(&(wmr_reading) {
 		.type = WMR_WIND,
-		.wind = data.wind
+		.time = time(NULL),
+		.wind = data.wind.wind
 	}, stderr);
 
 	(void) close(fd);
