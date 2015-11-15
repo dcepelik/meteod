@@ -107,7 +107,6 @@ typedef struct {
 	wmr_reading baro;
 	wmr_reading temp[10]; // TODO
 	wmr_reading status;
-	wmr_reading meta;
 } wmr_latest_data;
 
 

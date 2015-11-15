@@ -53,12 +53,14 @@ mainloop(wmr_server *srv) {
 		struct byte_array data;
 		byte_array_init(&data);
 
+		/*
 		serialize_data(&data, &srv->data);
 
 		if (write(fd, data.elems, data.size) != data.size) {
 			fprintf(stderr, "Cannot send %zu bytes of data\n",
 				data.size);
 		}
+		*/
 
 		(void) close(fd);
 		DEBUG_MSG("%s", "Client socket closed");
@@ -85,7 +87,6 @@ mainloop_pthread(void *x) {
 
 void
 server_init(wmr_server *srv) {
-	memset(&(srv->data), 0, sizeof (srv->data)); /* will be sent over net */
 	srv->fd = srv->thread_id = -1;
 }
 

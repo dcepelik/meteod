@@ -32,8 +32,9 @@ typedef struct { // move to .c
 	hid_device *dev;		/* HIDAPI device handle */
 	pthread_t mainloop_thread;	/* main loop thread id */
 	pthread_t heartbeat_thread;	/* heartbeat loop thread id */
+	struct wmr_handler *handler;	/* handlers of "reading ready" event */
+	wmr_latest_data latest;		/* latest readings of all kinds */
 	wmr_meta meta;			/* system meta-packet being made */
-	struct wmr_handler *handler;	/* handlers */
 
 	/* receive buffer */
 	uchar buf[WMR200_FRAME_SIZE];

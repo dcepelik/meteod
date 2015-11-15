@@ -16,7 +16,6 @@
 typedef struct {
 	int fd;				/* server socket descriptor */
 	pthread_t thread_id;		/* server thread ID */
-	wmr_latest_data data;		/* latest readings of all kinds */
 } wmr_server;
 
 

@@ -135,6 +135,7 @@ send_heartbeat(wmr200 *wmr) {
  * data processing
  */
 
+
 static time_t
 get_reading_time_from_packet(wmr200 *wmr) {
 	struct tm time = {
@@ -162,6 +163,14 @@ invoke_handlers(wmr200 *wmr, wmr_reading *reading) {
 
 
 static void
+update_if_newer(wmr_reading *old, wmr_reading *new) {
+	if (new->time >= old->time) {
+		*old = *new;
+	}
+}
+
+
+static void
 process_wind_data(wmr200 *wmr, uchar *data) {
 	/* BEGIN CSTYLED */
 	uint_t dir_flag		= LOW(data[7]);
@@ -170,7 +179,7 @@ process_wind_data(wmr200 *wmr, uchar *data) {
 	float chill		= data[12]; /* (data[12] - 32) / 1.8; */
 	/* END CSTYLED */
 
-	invoke_handlers(wmr, &(wmr_reading) {
+	wmr_reading reading = {
 		.type = WMR_WIND,
 		.time = get_reading_time_from_packet(wmr),
 		.wind = {
@@ -179,7 +188,10 @@ process_wind_data(wmr200 *wmr, uchar *data) {
 			.avg_speed = avg_speed,
 			.chill = chill
 		}
-	});
+	};
+
+	update_if_newer(&wmr->latest.wind, &reading);
+	invoke_handlers(wmr, &reading);
 }
 
 
@@ -192,7 +204,7 @@ process_rain_data(wmr200 *wmr, uchar *data) {
 	float accum_2007 	= (256 * data[14] + data[13]) * 25.4;
 	/* END CSTYLED */
 
-	invoke_handlers(wmr, &(wmr_reading) {
+	wmr_reading reading = {
 		.type = WMR_RAIN,
 		.time = get_reading_time_from_packet(wmr),
 		.rain = {
@@ -201,7 +213,10 @@ process_rain_data(wmr200 *wmr, uchar *data) {
 			.accum_24h = accum_24h,
 			.accum_2007 = accum_2007
 		}
-	});
+	};
+
+	update_if_newer(&wmr->latest.rain, &reading);
+	invoke_handlers(wmr, &reading);
 }
 
 
@@ -209,13 +224,16 @@ static void
 process_uvi_data(wmr200 *wmr, uchar *data) {
 	uint_t index = LOW(data[7]);
 
-	invoke_handlers(wmr, &(wmr_reading) {
+	wmr_reading reading = {
 		.type = WMR_UVI,
 		.time = get_reading_time_from_packet(wmr),
 		.uvi = {
 			.index = index
 		}
-	});
+	};
+
+	update_if_newer(&wmr->latest.uvi, &reading);
+	invoke_handlers(wmr, &reading);
 }
 
 
@@ -225,7 +243,7 @@ process_baro_data(wmr200 *wmr, uchar *data) {
 	uint_t alt_pressure	= 256 * LOW(data[10]) + data[9];
 	uint_t forecast_flag	= HIGH(data[8]);
 
-	invoke_handlers(wmr, &(wmr_reading) {
+	wmr_reading reading = {
 		.type = WMR_BARO,
 		.time = get_reading_time_from_packet(wmr),
 		.baro = {
@@ -233,7 +251,10 @@ process_baro_data(wmr200 *wmr, uchar *data) {
 			.alt_pressure = alt_pressure,
 			.forecast = FORECAST[forecast_flag]
 		}
-	});
+	};
+
+	update_if_newer(&wmr->latest.baro, &reading);
+	invoke_handlers(wmr, &reading);
 }
 
 
@@ -256,8 +277,7 @@ process_temp_data(wmr200 *wmr, uchar *data) {
 	float dew_point = (256 * LOW(data[12]) + data[11]) / 10.0;
 	if (HIGH(data[12]) == SIGN_NEGATIVE) dew_point = -dew_point;
 
-
-	invoke_handlers(wmr, &(wmr_reading) {
+	wmr_reading reading = {
 		.type = WMR_TEMP,
 		.time = get_reading_time_from_packet(wmr),
 		.temp = {
@@ -267,7 +287,10 @@ process_temp_data(wmr200 *wmr, uchar *data) {
 			.dew_point = dew_point,
 			.sensor_id = sensor_id
 		}
-	});
+	};
+
+	update_if_newer(&wmr->latest.temp[sensor_id], &reading);
+	invoke_handlers(wmr, &reading);
 }
 
 
@@ -278,15 +301,14 @@ process_status_data(wmr200 *wmr, uchar *data) {
 	uint_t rain_bat_flag		= NTH_BIT(4, data[5]);
 	uint_t uv_bat_flag		= NTH_BIT(5, data[5]);
 
-	uint_t wind_sensor_flag 		= NTH_BIT(0, data[2]);
+	uint_t wind_sensor_flag 	= NTH_BIT(0, data[2]);
 	uint_t temp_sensor_flag		= NTH_BIT(1, data[2]);
 	uint_t rain_sensor_flag		= NTH_BIT(4, data[3]);
 	uint_t uv_sensor_flag		= NTH_BIT(5, data[3]);
 
 	uint_t rtc_signal_flag		= NTH_BIT(8, data[4]);
 
-
-	invoke_handlers(wmr, &(wmr_reading) {
+	wmr_reading reading = {
 		.type = WMR_STATUS,
 		.time = get_reading_time_from_packet(wmr),
 		.status = {
@@ -302,7 +324,10 @@ process_status_data(wmr200 *wmr, uchar *data) {
 
 			.rtc_signal_level = LEVEL[rtc_signal_flag]
 		}
-	});
+	};
+
+	update_if_newer(&wmr->latest.status, &reading);
+	invoke_handlers(wmr, &reading);
 }
 
 
@@ -331,15 +356,13 @@ static void
 emit_meta_packet(wmr200 *wmr) {
 	DEBUG_MSG("Emitting system META packet 0x%02X", WMR_META);
 
-	wmr->meta.error_rate = (wmr->meta.num_packets > 0)
-		? (wmr->meta.num_failed / (float)wmr->meta.num_packets)
-		: 0;
-
-	invoke_handlers(wmr, &(wmr_reading) {
+	wmr_reading reading = {
 		.time = time(NULL),
 		.type = WMR_META,
 		.meta = wmr->meta,
-	});
+	};
+
+	invoke_handlers(wmr, &reading);
 }
 
 
@@ -518,7 +541,8 @@ wmr_open(void) {
 	wmr->packet = NULL;
 	wmr->buf_avail = wmr->buf_pos = 0;
 	wmr->handler = NULL;
-	memset(&wmr->meta, 0, sizeof (wmr_meta));
+	memset(&wmr->latest, 0, sizeof (wmr->latest));
+	memset(&wmr->meta, 0, sizeof (wmr->meta));
 
 	/* some kind of a wake-up command */
 	uchar abracadabra[8] = {

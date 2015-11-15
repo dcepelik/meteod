@@ -74,6 +74,7 @@ main(int argc, const char *argv[]) {
 
 	DEBUG_MSG("Connected to '%s'", hostname);
 
+	/*
 	struct byte_array arr;
 	byte_array_init(&arr);
 
@@ -87,11 +88,8 @@ main(int argc, const char *argv[]) {
 	wmr_latest_data data;
 	deserialize_data(&arr, &data);
 
-	yaml_push_reading(&(wmr_reading) {
-		.type = WMR_WIND,
-		.time = time(NULL),
-		.wind = data.wind.wind
-	}, stderr);
+	yaml_push_reading(&data.wind, stderr);
+	*/
 
 	(void) close(fd);
 	DEBUG_MSG("%s", "Connection to server closed");

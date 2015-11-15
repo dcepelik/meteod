@@ -393,7 +393,7 @@ serialize_data(struct byte_array *arr, wmr_latest_data *data) {
 	serialize_reading(arr, &data->baro);
 	//serialize_reading(arr, &data->temp);
 	serialize_reading(arr, &data->status);
-	serialize_reading(arr, &data->meta);
+	//serialize_reading(arr, &data->meta);
 }
 
 
@@ -405,6 +405,6 @@ deserialize_data(struct byte_array *arr, wmr_latest_data *data) {
 	deserialize_reading(arr, &data->baro);
 	//deserialize_reading(arr, &data->temp);
 	deserialize_reading(arr, &data->status);
-	deserialize_reading(arr, &data->meta);
+	//deserialize_reading(arr, &data->meta);
 
 }
