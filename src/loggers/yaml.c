@@ -130,7 +130,7 @@ log_reading(wmr_reading *reading, FILE *stream)
 		break;
 	}
 
-	fprintf("\n");
+	fprintf(stream, "\n");
 }
 
 
