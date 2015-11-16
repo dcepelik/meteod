@@ -16,7 +16,8 @@
 
 
 void
-strbuf_resize(strbuf *buf, size_t new_size) {
+strbuf_resize(strbuf *buf, size_t new_size)
+{
 	buf->str = realloc_safe(buf->str, new_size + 1);
 
 	buf->size = new_size;
@@ -26,7 +27,8 @@ strbuf_resize(strbuf *buf, size_t new_size) {
 
 
 void
-strbuf_init(strbuf *buf) {
+strbuf_init(strbuf *buf)
+{
 	buf->offset = 0;
 	buf->str = NULL;
 	strbuf_resize(buf, STRBUF_INIT_SIZE);
@@ -34,7 +36,8 @@ strbuf_init(strbuf *buf) {
 
 
 void
-strbuf_vprintf_at(strbuf *buf, size_t offset, char *format, va_list args) {
+strbuf_vprintf_at(strbuf *buf, size_t offset, char *format, va_list args)
+{
 	va_list args2;
 	va_copy(args2, args);
 
@@ -55,7 +58,8 @@ strbuf_vprintf_at(strbuf *buf, size_t offset, char *format, va_list args) {
 
 
 void
-strbuf_printf(strbuf *buf, size_t offset, char *format, ...) {
+strbuf_printf(strbuf *buf, size_t offset, char *format, ...)
+{
 	va_list args;
 	va_start(args, format);
 
@@ -66,7 +70,8 @@ strbuf_printf(strbuf *buf, size_t offset, char *format, ...) {
 
 
 void
-strbuf_append(strbuf *buf, char *format, ...) {
+strbuf_append(strbuf *buf, char *format, ...)
+{
 	va_list args;
 	va_start(args, format);
 
@@ -77,7 +82,8 @@ strbuf_append(strbuf *buf, char *format, ...) {
 
 
 void
-strbuf_prepend(strbuf *buf, char *format, ...) {
+strbuf_prepend(strbuf *buf, char *format, ...)
+{
 	va_list args;
 	va_start(args, format);
 
@@ -90,7 +96,8 @@ strbuf_prepend(strbuf *buf, char *format, ...) {
 
 
 char *
-strbuf_copy(strbuf *buf) {
+strbuf_copy(strbuf *buf)
+{
 	char *str = malloc(buf->offset + 1);
 	for (uint_t i = 0; i < buf->offset; i++) {
 		str[i] = buf->str[i];
@@ -102,6 +109,7 @@ strbuf_copy(strbuf *buf) {
 
 
 void
-strbuf_free(strbuf *buf) {
+strbuf_free(strbuf *buf)
+{
 	free(buf->str);
 }

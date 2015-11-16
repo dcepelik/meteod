@@ -30,7 +30,8 @@
 
 
 static void
-cleanup(wmr_server *srv) {
+cleanup(wmr_server *srv)
+{
 	if (srv->fd >= 0) {
 		DEBUG_MSG("%s", "Closing server socket");
 		(void) close(srv->fd);
@@ -39,7 +40,8 @@ cleanup(wmr_server *srv) {
 
 
 static void
-mainloop(wmr_server *srv) {
+mainloop(wmr_server *srv)
+{
 	int fd;
 
 	DEBUG_MSG("%s", "Entering server main loop");
@@ -67,7 +69,8 @@ mainloop(wmr_server *srv) {
 
 
 static void *
-mainloop_pthread(void *x) {
+mainloop_pthread(void *x)
+{
 	wmr_server *srv = (wmr_server *)x;
 
 	pthread_cleanup_push(cleanup, srv);
@@ -84,14 +87,16 @@ mainloop_pthread(void *x) {
 
 
 void
-server_init(wmr_server *srv, wmr200 *wmr) {
+server_init(wmr_server *srv, wmr200 *wmr)
+{
 	srv->wmr = wmr;
 	srv->fd = srv->thread_id = -1;
 }
 
 
 int
-server_start(wmr_server *srv) {
+server_start(wmr_server *srv)
+{
 	int port = 20892;
 	int optval = 1;
 	int ret;
@@ -137,7 +142,8 @@ server_start(wmr_server *srv) {
 
 
 void
-server_stop(wmr_server *srv) {
+server_stop(wmr_server *srv)
+{
 	pthread_cancel(srv->thread_id);
 	pthread_join(srv->thread_id, NULL);
 }

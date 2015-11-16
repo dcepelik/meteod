@@ -91,7 +91,8 @@ const char *SENSOR_NAMES[1 + WMR200_MAX_TEMP_SENSORS] = {
 
 
 static uchar
-read_byte(wmr200 *wmr) {
+read_byte(wmr200 *wmr)
+{
 	if (wmr->buf_avail == 0) {
 		int ret = hid_read(wmr->dev, wmr->buf, WMR200_FRAME_SIZE);
 		wmr->meta.num_frames++;
@@ -111,7 +112,8 @@ read_byte(wmr200 *wmr) {
 
 
 static void
-send_cmd_frame(wmr200 *wmr, uchar cmd) {
+send_cmd_frame(wmr200 *wmr, uchar cmd)
+{
 	uchar data[WMR200_FRAME_SIZE] = { 0x01, cmd };
 	int ret = hid_write(wmr->dev, data, WMR200_FRAME_SIZE);
 
@@ -125,7 +127,8 @@ send_cmd_frame(wmr200 *wmr, uchar cmd) {
 
 
 static void
-send_heartbeat(wmr200 *wmr) {
+send_heartbeat(wmr200 *wmr)
+{
 	DEBUG_MSG("%s", "Sending heartbeat to WMR200");
 	send_cmd_frame(wmr, HEARTBEAT);
 }
@@ -137,7 +140,8 @@ send_heartbeat(wmr200 *wmr) {
 
 
 static time_t
-get_reading_time_from_packet(wmr200 *wmr) {
+get_reading_time_from_packet(wmr200 *wmr)
+{
 	struct tm time = {
 		.tm_year	= (2000 + wmr->packet[6]) - 1900,
 		.tm_mon		= wmr->packet[5],
@@ -153,7 +157,8 @@ get_reading_time_from_packet(wmr200 *wmr) {
 
 
 static void
-invoke_handlers(wmr200 *wmr, wmr_reading *reading) {
+invoke_handlers(wmr200 *wmr, wmr_reading *reading)
+{
 	struct wmr_handler *handler = wmr->handler;
 	while (handler != NULL) {
 		handler->handler(reading, handler->arg);
@@ -163,7 +168,8 @@ invoke_handlers(wmr200 *wmr, wmr_reading *reading) {
 
 
 static void
-update_if_newer(wmr_reading *old, wmr_reading *new) {
+update_if_newer(wmr_reading *old, wmr_reading *new)
+{
 	if (new->time >= old->time) {
 		*old = *new;
 	}
@@ -171,7 +177,8 @@ update_if_newer(wmr_reading *old, wmr_reading *new) {
 
 
 static void
-process_wind_data(wmr200 *wmr, uchar *data) {
+process_wind_data(wmr200 *wmr, uchar *data)
+{
 	/* BEGIN CSTYLED */
 	uint_t dir_flag		= LOW(data[7]);
 	float gust_speed	= (256 * LOW(data[10]) +      data[ 9])  / 10.0;
@@ -196,7 +203,8 @@ process_wind_data(wmr200 *wmr, uchar *data) {
 
 
 static void
-process_rain_data(wmr200 *wmr, uchar *data) {
+process_rain_data(wmr200 *wmr, uchar *data)
+{
 	/* BEGIN CSTYLED */
 	float rate		= (256 * data[ 8] + data[ 7]) * 25.4;
 	float accum_hour	= (256 * data[10] + data[ 9]) * 25.4;
@@ -221,7 +229,8 @@ process_rain_data(wmr200 *wmr, uchar *data) {
 
 
 static void
-process_uvi_data(wmr200 *wmr, uchar *data) {
+process_uvi_data(wmr200 *wmr, uchar *data)
+{
 	uint_t index = LOW(data[7]);
 
 	wmr_reading reading = {
@@ -238,7 +247,8 @@ process_uvi_data(wmr200 *wmr, uchar *data) {
 
 
 static void
-process_baro_data(wmr200 *wmr, uchar *data) {
+process_baro_data(wmr200 *wmr, uchar *data)
+{
 	uint_t pressure		= 256 * LOW(data[8])  + data[7];
 	uint_t alt_pressure	= 256 * LOW(data[10]) + data[9];
 	uint_t forecast_flag	= HIGH(data[8]);
@@ -259,7 +269,8 @@ process_baro_data(wmr200 *wmr, uchar *data) {
 
 
 static void
-process_temp_data(wmr200 *wmr, uchar *data) {
+process_temp_data(wmr200 *wmr, uchar *data)
+{
 	int sensor_id = LOW(data[7]);
 
 	/* TODO */
@@ -295,7 +306,8 @@ process_temp_data(wmr200 *wmr, uchar *data) {
 
 
 static void
-process_status_data(wmr200 *wmr, uchar *data) {
+process_status_data(wmr200 *wmr, uchar *data)
+{
 	uint_t wind_bat_flag		= NTH_BIT(0, data[4]);
 	uint_t temp_bat_flag		= NTH_BIT(1, data[4]);
 	uint_t rain_bat_flag		= NTH_BIT(4, data[5]);
@@ -332,7 +344,8 @@ process_status_data(wmr200 *wmr, uchar *data) {
 
 
 static void
-process_historic_data(wmr200 *wmr, uchar *data) {
+process_historic_data(wmr200 *wmr, uchar *data)
+{
 	process_rain_data(wmr, data);
 	process_wind_data(wmr, data + 13);
 	process_uvi_data(wmr, data + 20);
@@ -353,7 +366,8 @@ process_historic_data(wmr200 *wmr, uchar *data) {
 
 
 static void
-emit_meta_packet(wmr200 *wmr) {
+emit_meta_packet(wmr200 *wmr)
+{
 	DEBUG_MSG("Emitting system META packet 0x%02X", WMR_META);
 
 	wmr_reading reading = {
@@ -372,7 +386,8 @@ emit_meta_packet(wmr200 *wmr) {
 
 
 static uint_t
-verify_packet(wmr200 *wmr) {
+verify_packet(wmr200 *wmr)
+{
 	if (wmr->packet_len <= 2) {
 		return (-1);
 	}
@@ -396,7 +411,8 @@ verify_packet(wmr200 *wmr) {
 
 
 static void
-dispatch_packet(wmr200 *wmr) {
+dispatch_packet(wmr200 *wmr)
+{
 	switch (wmr->packet_type) {
 	case HISTORIC_DATA:
 		process_historic_data(wmr, wmr->packet);
@@ -433,7 +449,8 @@ dispatch_packet(wmr200 *wmr) {
 
 
 static void
-mainloop(wmr200 *wmr) {
+mainloop(wmr200 *wmr)
+{
 	while (1) {
 		wmr->packet_type = read_byte(wmr);
 
@@ -495,7 +512,8 @@ act_on_packet_type:
 
 
 void *
-mainloop_pthread(void *arg) {
+mainloop_pthread(void *arg)
+{
 	wmr200 *wmr = (wmr200 *)arg;
 	mainloop(wmr); /* TODO register any cleanup handlers here? */
 
@@ -504,7 +522,8 @@ mainloop_pthread(void *arg) {
 
 
 static void
-heartbeat_loop(wmr200 *wmr) {
+heartbeat_loop(wmr200 *wmr)
+{
 	for (;;) {
 		send_heartbeat(wmr);
 		emit_meta_packet(wmr);
@@ -515,7 +534,8 @@ heartbeat_loop(wmr200 *wmr) {
 
 
 static void *
-heartbeat_loop_pthread(void *arg) {
+heartbeat_loop_pthread(void *arg)
+{
 	wmr200 *wmr = (wmr200 *)arg;
 	heartbeat_loop(wmr);
 	
@@ -529,7 +549,8 @@ heartbeat_loop_pthread(void *arg) {
 
 
 wmr200 *
-wmr_open(void) {
+wmr_open(void)
+{
 	wmr200 *wmr = malloc_safe(sizeof (wmr200));
 
 	wmr->dev = hid_open(VENDOR_ID, PRODUCT_ID, NULL);
@@ -560,7 +581,8 @@ wmr_open(void) {
 
 
 void
-wmr_close(wmr200 *wmr) {
+wmr_close(wmr200 *wmr)
+{
 	if (wmr->dev != NULL) {
 		send_cmd_frame(wmr, COMMUNICATION_STOP);
 		hid_close(wmr->dev);
@@ -571,19 +593,22 @@ wmr_close(wmr200 *wmr) {
 
 
 void
-wmr_init(void) {
+wmr_init(void)
+{
 	hid_init();
 }
 
 
 void
-wmr_end(void) {
+wmr_end(void)
+{
 	hid_exit();
 }
 
 
 int
-wmr_start(wmr200 *wmr) {
+wmr_start(wmr200 *wmr)
+{
 	if (pthread_create(&wmr->heartbeat_thread,
 		NULL, heartbeat_loop_pthread, wmr) != 0) {
 		DEBUG_MSG("%s", "Cannot start heartbeat loop thread");
@@ -602,7 +627,8 @@ wmr_start(wmr200 *wmr) {
 
 
 void
-wmr_stop(wmr200 *wmr) {
+wmr_stop(wmr200 *wmr)
+{
 	pthread_cancel(wmr->heartbeat_thread);
 	pthread_cancel(wmr->mainloop_thread);
 
@@ -612,7 +638,8 @@ wmr_stop(wmr200 *wmr) {
 
 
 void
-wmr_add_handler(wmr200 *wmr, wmr_handler_t handler, void *arg) {
+wmr_add_handler(wmr200 *wmr, wmr_handler_t handler, void *arg)
+{
 	struct wmr_handler *wh = malloc_safe(sizeof (struct wmr_handler));
 	wh->handler = handler;
 	wh->arg = arg;

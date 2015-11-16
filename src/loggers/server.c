@@ -17,6 +17,7 @@
 
 
 void
-server_push_reading(wmr_reading *reading, void *arg) {
+server_push_reading(wmr_reading *reading, void *arg)
+{
 	/* TODO implement this */
 }

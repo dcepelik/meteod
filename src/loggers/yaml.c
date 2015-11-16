@@ -21,7 +21,8 @@
 
 
 static void
-log_wind(wmr_wind *wind, FILE *stream) {
+log_wind(wmr_wind *wind, FILE *stream)
+{
 	fprintf(stream, "dir: %s\n", wind->dir);
 	fprintf(stream, "gust_speed: %.2f\n", wind->gust_speed);
 	fprintf(stream, "avg_speed: %.2f\n", wind->avg_speed);
@@ -30,7 +31,8 @@ log_wind(wmr_wind *wind, FILE *stream) {
 
 
 static void
-log_rain(wmr_rain *rain, FILE *stream) {
+log_rain(wmr_rain *rain, FILE *stream)
+{
 	fprintf(stream, "rate: %.2f\n", rain->rate);
 	fprintf(stream, "accum_hour: %.2f\n", rain->accum_hour);
 	fprintf(stream, "accum_24h: %.2f\n", rain->accum_24h);
@@ -39,13 +41,15 @@ log_rain(wmr_rain *rain, FILE *stream) {
 
 
 static void
-log_uvi(wmr_uvi *uvi, FILE *stream) {
+log_uvi(wmr_uvi *uvi, FILE *stream)
+{
 	fprintf(stream, "index: %u\n", uvi->index);
 }
 
 
 static void
-log_baro(wmr_baro *baro, FILE *stream) {
+log_baro(wmr_baro *baro, FILE *stream)
+{
 	fprintf(stream, "pressure: %u\n", baro->pressure);
 	fprintf(stream, "alt_pressure: %u\n", baro->alt_pressure);
 	fprintf(stream, "forecast: %s\n", baro->forecast);
@@ -53,7 +57,8 @@ log_baro(wmr_baro *baro, FILE *stream) {
 
 
 static void
-log_temp(wmr_temp *temp, FILE *stream) {
+log_temp(wmr_temp *temp, FILE *stream)
+{
 	fprintf(stream, "humidity: %u\n", temp->humidity);
 	fprintf(stream, "heat_index: %u\n", temp->heat_index);
 	fprintf(stream, "temp: %.1f\n", temp->temp);
@@ -62,7 +67,8 @@ log_temp(wmr_temp *temp, FILE *stream) {
 
 
 static void
-log_status(wmr_status *status, FILE *stream) {
+log_status(wmr_status *status, FILE *stream)
+{
 	fprintf(stream, "wind_bat: %s\n", status->wind_bat);
 	fprintf(stream, "temp_bat: %s\n", status->temp_bat);
 	fprintf(stream, "rain_bat: %s\n", status->rain_bat);
@@ -76,7 +82,8 @@ log_status(wmr_status *status, FILE *stream) {
 
 
 static void
-log_meta(wmr_meta *meta, FILE *stream) {
+log_meta(wmr_meta *meta, FILE *stream)
+{
 	fprintf(stream, "num_packets: %u\n", meta->num_packets);
 	fprintf(stream, "num_failed: %u\n", meta->num_failed);
 	fprintf(stream, "num_frames: %u\n", meta->num_frames);
@@ -87,7 +94,8 @@ log_meta(wmr_meta *meta, FILE *stream) {
 
 
 static void
-log_reading(wmr_reading *reading, FILE *stream) {
+log_reading(wmr_reading *reading, FILE *stream)
+{
 	fprintf(stream, "sensor: %s\n", wmr_sensor_name(reading));
 	fprintf(stream, "time: %li\n", reading->time);
 
@@ -131,7 +139,8 @@ log_reading(wmr_reading *reading, FILE *stream) {
 
 
 void
-yaml_push_reading(wmr_reading *reading, void *arg) {
+yaml_push_reading(wmr_reading *reading, void *arg)
+{
 	FILE *stream = (FILE *)arg;
 	log_reading(reading, stream);
 }

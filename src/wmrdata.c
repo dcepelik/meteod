@@ -13,7 +13,8 @@
 
 
 char *
-wmr_sensor_name(wmr_reading *reading) {
+wmr_sensor_name(wmr_reading *reading)
+{
 	strbuf buf;
 
 	switch (reading->type) {

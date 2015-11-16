@@ -33,7 +33,8 @@
 
 
 int
-main(int argc, const char *argv[]) {
+main(int argc, const char *argv[])
+{
 	int fd, ret, n;
 	const char *hostname, *portstr;
 	struct addrinfo hints;

@@ -22,7 +22,8 @@
 
 
 static void
-write_rrd(char *file_rel_path, strbuf *data) {
+write_rrd(char *file_rel_path, strbuf *data)
+{
 	strbuf filename;
 	strbuf_init(&filename);
 	strbuf_append(&filename, "%s/%s", RRD_ROOT_PATH, file_rel_path);
@@ -49,7 +50,8 @@ write_rrd(char *file_rel_path, strbuf *data) {
 
 
 static void
-log_wind(wmr_wind *wind) {
+log_wind(wmr_wind *wind)
+{
 	strbuf data;
 	strbuf_init(&data);
 	strbuf_append(
@@ -64,7 +66,8 @@ log_wind(wmr_wind *wind) {
 
 
 static void
-log_rain(wmr_rain *rain) {
+log_rain(wmr_rain *rain)
+{
 	strbuf data;
 	strbuf_init(&data);
 	strbuf_append(
@@ -79,7 +82,8 @@ log_rain(wmr_rain *rain) {
 
 
 static void
-log_uvi(wmr_uvi *uvi) {
+log_uvi(wmr_uvi *uvi)
+{
 	strbuf data;
 	strbuf_init(&data);
 	strbuf_append(
@@ -93,7 +97,8 @@ log_uvi(wmr_uvi *uvi) {
 
 
 static void
-log_baro(wmr_baro *baro) {
+log_baro(wmr_baro *baro)
+{
 	strbuf data;
 	strbuf_init(&data);
 	strbuf_append(
@@ -108,7 +113,8 @@ log_baro(wmr_baro *baro) {
 
 
 static void
-log_temp(wmr_temp *temp) {
+log_temp(wmr_temp *temp)
+{
 	strbuf data;
 	strbuf_init(&data);
 	strbuf_append(
@@ -130,7 +136,8 @@ log_temp(wmr_temp *temp) {
 
 
 static void
-log_reading(wmr_reading *reading, char *rrd_file) {
+log_reading(wmr_reading *reading, char *rrd_file)
+{
 	switch (reading->type) {
 	case WMR_WIND:
 		log_wind(&reading->wind);
@@ -161,7 +168,8 @@ log_reading(wmr_reading *reading, char *rrd_file) {
 
 
 void
-rrd_push_reading(wmr_reading *reading, void *arg) {
+rrd_push_reading(wmr_reading *reading, void *arg)
+{
 	char *rrd_file = (char *)arg;
 	log_reading(reading, rrd_file);
 }

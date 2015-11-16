@@ -32,19 +32,22 @@ const double FLOAT_SCALE = (1L << 32);	/* scale float to int */
 
 
 static void
-serialize_char(struct byte_array *arr, char c) {
+serialize_char(struct byte_array *arr, char c)
+{
 	byte_array_push(arr, c);
 }
 
 
 static char
-deserialize_char(struct byte_array *arr) {
+deserialize_char(struct byte_array *arr)
+{
 	return (byte_array_shift(arr));
 }
 
 
 static void
-serialize_long(struct byte_array *arr, long l) {
+serialize_long(struct byte_array *arr, long l)
+{
 	long nl;
 	char sign;
 
@@ -59,7 +62,8 @@ serialize_long(struct byte_array *arr, long l) {
 
 
 static long
-deserialize_long(struct byte_array *arr) {
+deserialize_long(struct byte_array *arr)
+{
 	long be64 = 0;
 	char sign;
 	int i;
@@ -74,19 +78,22 @@ deserialize_long(struct byte_array *arr) {
 
 
 static void
-serialize_int(struct byte_array *arr, int i) {
+serialize_int(struct byte_array *arr, int i)
+{
 	serialize_long(arr, (long)i);
 }
 
 
 static int
-deserialize_int(struct byte_array *arr) {
+deserialize_int(struct byte_array *arr)
+{
 	return ((int)deserialize_long(arr));
 }
 
 
 void
-serialize_float(struct byte_array *arr, float f) {
+serialize_float(struct byte_array *arr, float f)
+{
 	float fract;
 	int exp;
 	long ifract;
@@ -108,7 +115,8 @@ serialize_float(struct byte_array *arr, float f) {
 
 
 float
-deserialize_float(struct byte_array *arr) {
+deserialize_float(struct byte_array *arr)
+{
 	float fract;
 	int exp;
 	long ifract;
@@ -126,7 +134,8 @@ deserialize_float(struct byte_array *arr) {
 
 
 static void
-serialize_string(struct byte_array *arr, const char *str) {
+serialize_string(struct byte_array *arr, const char *str)
+{
 	if (str != NULL) {
 		int i = 0;
 		while (str[i] != '\0') {
@@ -140,7 +149,8 @@ serialize_string(struct byte_array *arr, const char *str) {
 
 
 static char *
-deserialize_string(struct byte_array *arr) {
+deserialize_string(struct byte_array *arr)
+{
 	strbuf str;
 
 	strbuf_init(&str);
@@ -163,7 +173,8 @@ deserialize_string(struct byte_array *arr) {
 
 
 static void
-serialize_wind(struct byte_array *arr, wmr_wind *wind) {
+serialize_wind(struct byte_array *arr, wmr_wind *wind)
+{
 	serialize_string(arr, wind->dir);
 	serialize_float(arr, wind->gust_speed);
 	serialize_float(arr, wind->avg_speed);
@@ -172,7 +183,8 @@ serialize_wind(struct byte_array *arr, wmr_wind *wind) {
 
 
 static void
-deserialize_wind(struct byte_array *arr, wmr_wind *wind) {
+deserialize_wind(struct byte_array *arr, wmr_wind *wind)
+{
 	wind->dir = deserialize_string(arr);
 	wind->gust_speed = deserialize_float(arr);
 	wind->avg_speed = deserialize_float(arr);
@@ -181,7 +193,8 @@ deserialize_wind(struct byte_array *arr, wmr_wind *wind) {
 
 
 static void
-serialize_rain(struct byte_array *arr, wmr_rain *rain) {
+serialize_rain(struct byte_array *arr, wmr_rain *rain)
+{
 	serialize_float(arr, rain->rate);
 	serialize_float(arr, rain->accum_hour);
 	serialize_float(arr, rain->accum_24h);
@@ -190,7 +203,8 @@ serialize_rain(struct byte_array *arr, wmr_rain *rain) {
 
 
 static void
-deserialize_rain(struct byte_array *arr, wmr_rain *rain) {
+deserialize_rain(struct byte_array *arr, wmr_rain *rain)
+{
 	rain->rate = deserialize_float(arr);
 	rain->accum_hour = deserialize_float(arr);
 	rain->accum_24h = deserialize_float(arr);
@@ -199,19 +213,22 @@ deserialize_rain(struct byte_array *arr, wmr_rain *rain) {
 
 
 static void
-serialize_uvi(struct byte_array *arr, wmr_uvi *uvi) {
+serialize_uvi(struct byte_array *arr, wmr_uvi *uvi)
+{
 	serialize_int(arr, uvi->index);
 }
 
 
 static void
-deserialize_uvi(struct byte_array *arr, wmr_uvi *uvi) {
+deserialize_uvi(struct byte_array *arr, wmr_uvi *uvi)
+{
 	uvi->index = deserialize_int(arr);
 }
 
 
 static void
-serialize_baro(struct byte_array *arr, wmr_baro *baro) {
+serialize_baro(struct byte_array *arr, wmr_baro *baro)
+{
 	serialize_int(arr, baro->pressure);
 	serialize_int(arr, baro->alt_pressure);
 	serialize_string(arr, baro->forecast);
@@ -219,7 +236,8 @@ serialize_baro(struct byte_array *arr, wmr_baro *baro) {
 
 
 static void
-deserialize_baro(struct byte_array *arr, wmr_baro *baro) {
+deserialize_baro(struct byte_array *arr, wmr_baro *baro)
+{
 	baro->pressure = deserialize_int(arr);
 	baro->alt_pressure = deserialize_int(arr);
 	baro->forecast = deserialize_string(arr);
@@ -227,7 +245,8 @@ deserialize_baro(struct byte_array *arr, wmr_baro *baro) {
 
 
 static void
-serialize_temp(struct byte_array *arr, wmr_temp *temp) {
+serialize_temp(struct byte_array *arr, wmr_temp *temp)
+{
 	serialize_int(arr, temp->sensor_id);
 	serialize_int(arr, temp->humidity);
 	serialize_int(arr, temp->heat_index);
@@ -237,7 +256,8 @@ serialize_temp(struct byte_array *arr, wmr_temp *temp) {
 
 
 static void
-deserialize_temp(struct byte_array *arr, wmr_temp *temp) {
+deserialize_temp(struct byte_array *arr, wmr_temp *temp)
+{
 	temp->sensor_id = deserialize_int(arr);
 	temp->humidity = deserialize_int(arr);
 	temp->heat_index = deserialize_int(arr);
@@ -247,7 +267,8 @@ deserialize_temp(struct byte_array *arr, wmr_temp *temp) {
 
 
 static void
-serialize_status(struct byte_array *arr, wmr_status *status) {
+serialize_status(struct byte_array *arr, wmr_status *status)
+{
 	serialize_string(arr, status->wind_bat);
 	serialize_string(arr, status->temp_bat);
 	serialize_string(arr, status->rain_bat);
@@ -263,7 +284,8 @@ serialize_status(struct byte_array *arr, wmr_status *status) {
 
 
 static void
-deserialize_status(struct byte_array *arr, wmr_status *status) {
+deserialize_status(struct byte_array *arr, wmr_status *status)
+{
 	status->wind_bat = deserialize_string(arr);
 	status->temp_bat = deserialize_string(arr);
 	status->rain_bat = deserialize_string(arr);
@@ -279,7 +301,8 @@ deserialize_status(struct byte_array *arr, wmr_status *status) {
 
 
 static void
-serialize_meta(struct byte_array *arr, wmr_meta *meta) {
+serialize_meta(struct byte_array *arr, wmr_meta *meta)
+{
 	serialize_int(arr, meta->num_packets);
 	serialize_int(arr, meta->num_failed);
 	serialize_int(arr, meta->num_frames);
@@ -290,7 +313,8 @@ serialize_meta(struct byte_array *arr, wmr_meta *meta) {
 
 
 static void
-deserialize_meta(struct byte_array *arr, wmr_meta *meta) {
+deserialize_meta(struct byte_array *arr, wmr_meta *meta)
+{
 	meta->num_packets = deserialize_int(arr);
 	meta->num_failed = deserialize_int(arr);
 	meta->num_frames = deserialize_int(arr);
@@ -301,7 +325,8 @@ deserialize_meta(struct byte_array *arr, wmr_meta *meta) {
 
 
 static void
-serialize_reading(struct byte_array *arr, wmr_reading *reading) {
+serialize_reading(struct byte_array *arr, wmr_reading *reading)
+{
 	serialize_int(arr, reading->type);
 	serialize_long(arr, reading->time);
 
@@ -341,7 +366,8 @@ serialize_reading(struct byte_array *arr, wmr_reading *reading) {
 
 
 static void
-deserialize_reading(struct byte_array *arr, wmr_reading *reading) {
+deserialize_reading(struct byte_array *arr, wmr_reading *reading)
+{
 	reading->type = deserialize_int(arr);
 	reading->time = deserialize_long(arr);
 
@@ -386,7 +412,8 @@ deserialize_reading(struct byte_array *arr, wmr_reading *reading) {
 
 
 void
-serialize_data(struct byte_array *arr, wmr_latest_data *data) {
+serialize_data(struct byte_array *arr, wmr_latest_data *data)
+{
 	serialize_reading(arr, &data->wind);
 	serialize_reading(arr, &data->rain);
 	serialize_reading(arr, &data->uvi);
@@ -398,7 +425,8 @@ serialize_data(struct byte_array *arr, wmr_latest_data *data) {
 
 
 void
-deserialize_data(struct byte_array *arr, wmr_latest_data *data) {
+deserialize_data(struct byte_array *arr, wmr_latest_data *data)
+{
 	deserialize_reading(arr, &data->wind);
 	deserialize_reading(arr, &data->rain);
 	deserialize_reading(arr, &data->uvi);

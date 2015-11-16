@@ -22,7 +22,8 @@
 
 
 static void
-detach_from_parent(void) {
+detach_from_parent(void)
+{
 	pid_t pid, newpid;
 	pid_t sid;
 	
@@ -51,7 +52,8 @@ detach_from_parent(void) {
 
 
 static void
-jail(void) {
+jail(void)
+{
 	umask(227);
 
 	if (chdir("/var/wmrd") == -1) {
@@ -67,7 +69,8 @@ jail(void) {
 
 
 static void
-drop_root_privileges(void) {
+drop_root_privileges(void)
+{
 	gid_t group_id = 1001;
 	uid_t user_id = 1001;
 
@@ -93,7 +96,8 @@ drop_root_privileges(void) {
 
 
 void
-daemonize(const char *argv0) {
+daemonize(const char *argv0)
+{
 	openlog(argv0, LOG_NOWAIT | LOG_PID, LOG_USER);
 
 	detach_from_parent();

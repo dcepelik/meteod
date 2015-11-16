@@ -32,13 +32,15 @@ static struct option longopts[] = {
 
 
 static void
-signal_handler(int signum) {
+signal_handler(int signum)
+{
 	DEBUG_MSG("Caught signal %d (%s)", signum, strsignal(signum));
 }
 
 
 int
-main(int argc, char *argv[]) {
+main(int argc, char *argv[])
+{
 	sigset_t set, oldset;
 	wmr200 *wmr;
 	int c, dflag = 0;

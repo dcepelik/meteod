@@ -17,7 +17,8 @@
 
 
 void *
-die(char *format, ...) {
+die(char *format, ...)
+{
 	va_list args;
 	va_start(args, format);
 
@@ -29,7 +30,8 @@ die(char *format, ...) {
 
 
 void *
-malloc_safe(size_t size) {
+malloc_safe(size_t size)
+{
 	void *x = malloc(size);
 	if (!x) die("Cannot allocate %zu bytes of memory", size);
 
@@ -38,7 +40,8 @@ malloc_safe(size_t size) {
 
 
 void *
-realloc_safe(void *x, size_t size) {
+realloc_safe(void *x, size_t size)
+{
 	x = realloc(x, size);
 	if (!x) die("Cannot reallocate memory (new size was %zu bytes)", size);
 
