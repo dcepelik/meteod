@@ -96,6 +96,7 @@ log_meta(wmr_meta *meta, FILE *stream)
 static void
 log_reading(wmr_reading *reading, FILE *stream)
 {
+	fprintf(stream, "---\n\n");
 	fprintf(stream, "sensor: %s\n", wmr_sensor_name(reading));
 	fprintf(stream, "time: %li\n", reading->time);
 
@@ -129,7 +130,7 @@ log_reading(wmr_reading *reading, FILE *stream)
 		break;
 	}
 
-	fprintf(stream, "---\n\n");
+	fprintf("\n");
 }
 
 
