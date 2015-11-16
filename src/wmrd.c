@@ -79,10 +79,10 @@ main(int argc, char *argv[])
 
 	wmr_init();
 
-	//wmr = wmr_open();
-	wmr = malloc(sizeof(wmr200));
+	wmr = wmr_open();
+	//wmr = malloc(sizeof(wmr200));
 	if (wmr == NULL)
-		//die("wmr_open: no WMR200 handle returned\n");
+		die("wmr_open: no WMR200 handle returned\n");
 
 	if (wmr_start(wmr) != 0)
 		die("wmr_start: cannot start WMR comm loop\n");

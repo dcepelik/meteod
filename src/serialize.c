@@ -358,9 +358,6 @@ serialize_reading(struct byte_array *arr, wmr_reading *reading)
 	case WMR_META:
 		serialize_meta(arr, &reading->meta);
 		break;
-
-	default:
-		die("Cannot serialize reading of type %02x\n", reading->type);
 	}
 }
 
@@ -399,9 +396,6 @@ deserialize_reading(struct byte_array *arr, wmr_reading *reading)
 	case WMR_META:
 		deserialize_meta(arr, &reading->meta);
 		break;
-
-	default:
-		die("Cannot serialize reading of type %02x\n", reading->type);
 	}
 }
 

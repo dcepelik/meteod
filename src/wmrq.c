@@ -89,6 +89,9 @@ main(int argc, const char *argv[])
 	deserialize_data(&arr, &data);
 
 	yaml_push_reading(&data.wind, stderr);
+	yaml_push_reading(&data.rain, stderr);
+	yaml_push_reading(&data.baro, stderr);
+	yaml_push_reading(&data.status, stderr);
 
 	(void) close(fd);
 	DEBUG_MSG("%s", "Connection to server closed");
