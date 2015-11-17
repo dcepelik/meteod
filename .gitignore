@@ -4,5 +4,4 @@
 src/wmrd
 src/wmrq
 *.rrd
-*.png
-www/temp
+www/tmp

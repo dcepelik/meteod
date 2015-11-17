@@ -63,23 +63,23 @@
 					</tr>
 
 					<tr>
-						<th colspan=2>Předpověď na 12-24 hod.</th>
+						<th colspan=2>Předpověď 12-24 h</th>
 						<td>V noci zataženo</td>
 					</tr>
 
 					<tr>
-						<th rowspan=3>Vítr</th>
-						<td>Rychlost v poryvech</td>
+						<th rowspan=2>Rychlost větru</th>
+						<td>Poryvy</td>
 						<td>2 m&middot;s<sup>-1</sup></td>
 					</tr>
 
 					<tr>
-						<td>Průměrná rychlost</td>
+						<td>Průměrná</td>
 						<td>0.8 m&middot;s<sup>-1</sup></td>
 					</tr>
 
 					<tr>
-						<td>Převládající směr</td>
+						<th colspan=2>Směr větru</th>
 						<td>SSV</td>
 					</tr>
 
@@ -159,32 +159,32 @@
 
 					<tr>
 						<td>Anemometr</td>
-						<td>OK</td>
-						<td>OK</td>
+						<td><img src="/img/accept.png" alt="OK" /></td>
+						<td><img src="/img/accept.png" alt="OK" /></td>
 					</tr>
 
 					<tr>
 						<td>Srážkoměr</td>
-						<td>OK</td>
-						<td>OK</td>
+						<td><img src="/img/accept.png" alt="OK" /></td>
+						<td><img src="/img/accept.png" alt="OK" /></td>
 					</tr>
 
 					<tr>
 						<td>UV senzor</td>
-						<td>OK</td>
-						<td>OK</td>
+						<td><img src="/img/accept.png" alt="OK" /></td>
+						<td><img src="/img/accept.png" alt="OK" /></td>
 					</tr>
 
 					<tr>
 						<td>Teplotní čidlo č. 1</td>
 						<td class=error>Slabá</td>
-						<td>OK</td>
+						<td><img src="/img/accept.png" alt="OK" /></td>
 					</tr>
 
 					<tr>
 						<td>RTC obvod</td>
 						<td>&mdash;</td>
-						<td>OK</td>
+						<td><img src="/img/accept.png" alt="OK" /></td>
 					</tr>
 				</table>
 			</div>
@@ -199,9 +199,9 @@
 
 
 				<p class=warning>
-					<strong>Pozor prosím,</strong> zde zobrazené
-					údaje a celý tento web jsou betaverzí softwarového
-					díla, které je doposud ve výstavbě.
+					<strong>Pozor prosím,</strong> zde zobrazené jsou pouze
+					modelová data, která <strong>neodpovídají aktuální povětrnostní
+					situaci</strong>!
 				</p>
 
 				<h2>Data zapisovače</h2>
