@@ -1,6 +1,6 @@
 /*
  * loggers/yaml.h:
- * Log readings in YAML to a file or stream
+ * Log readings serialized in YAML to a file or stream
  *
  * This software may be freely used and distributed according to the terms
  * of the GNU GPL version 2 or 3. See LICENSE for more information.

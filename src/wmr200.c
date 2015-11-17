@@ -55,33 +55,31 @@ struct wmr_handler {
  */
 
 
-const char *LEVEL[] = {		/* level (signal, battery) */
+/* signal leves */
+static const char *LEVEL[] = {
 	"ok",
 	"low"
 };
 
-const char *STATUS[] = {
+/* status flags */
+static const char *STATUS[] = {
 	"ok",
 	"failed"
 };
 
-const char *FORECAST[] = {
+/* forecast "icons" */
+static const char *FORECAST[] = {
 	"partly_cloudy-day", "rainy", "cloudy",
 	"sunny", "clear", "snowy",
 	"partly_cloudy-night"
 };
 
-const char *WIND_DIRECTION[] = {
+/* wind direction */
+static const char *WIND_DIRECTION[] = {
 	"N", "NNE", "NE", "ENE",
 	"E", "ESE", "SE", "SSE",
 	"S", "SSW", "SW", "WSW",
 	"W", "WNW", "NW", "NNW"
-};
-
-const char *SENSOR_NAMES[1 + WMR200_MAX_TEMP_SENSORS] = {
-	"indoor",
-	"1", "2", "3", "4", "5",
-	"6", "7", "8", "9", "10"
 };
 
 
