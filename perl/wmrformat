@@ -1,0 +1,93 @@
+#!/usr/bin/perl
+#
+#    wmrformat:
+#    Print latest readings, formatted
+#
+#    This software may be freely used and distributed according to the terms
+#    of the GNU GPL version 2 or 3. See LICENSE for more information.
+#
+#    Copyright (c) 2015 David Čepelík <cepelik@gymlit.cz>
+#
+#
+
+use strict;
+use warnings;
+
+use YAML::Tiny;
+use Data::Dumper;
+
+my $format = shift @ARGV
+	or die "Usage: ...\n";
+
+my $src = qx( cat /home/david/example.yaml );
+my $yaml = YAML::Tiny->read_string($src);
+
+my %readings = ();
+
+for my $key (keys @$yaml) {
+	$readings{$yaml->[$key]->{sensor}} = $yaml->[$key];
+}
+
+
+
+my $sensor;
+my $reading;
+my $in = 0;
+my $after_dot = 0;
+
+my $output = '';
+for my $char (split //, $format) {
+	if ($char eq '{') {
+		if ($in) {
+			die "Syntax error: $char was unexpected\n";
+		}
+
+		$in = 1;
+		next;
+	}
+
+	if ($char eq '}') {
+		if (not exists $readings{$sensor}) {
+			die "Unknown sensor: '$sensor'\n";
+		}
+
+		if (not exists $readings{$sensor}->{$reading}) {
+			die "Unknown reading: '$reading' of sensor '$sensor'";
+		}
+
+		$output .= $readings{$sensor}->{$reading};
+
+		$in = 0;
+		$after_dot = 0;
+		$sensor = $reading = '';
+		next;
+	}
+
+	if ($char eq '.' and $in) {
+		if ($after_dot) {
+			die "Syntax error: $char was unexpected\n";
+		}
+
+		$after_dot = 1;
+		next;
+	}
+
+	if ($in) {
+		if ($after_dot) {
+			$reading .= $char;
+		}
+		else {
+			$sensor .= $char;
+		}
+	}
+	else {
+		$output .= $char;
+	}
+}
+
+if ($in) {
+	die "Syntax error: missing matching }";
+}
+
+
+print "\"$output\"", "\n";
