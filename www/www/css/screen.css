@@ -9,9 +9,11 @@ html, body {
 
 #sidebar {
 	float: right;
-	font-size: 0.9em;
 	overflow: hidden;
 	width: 300px;
+}
+#sidebar table, #sidebar p {
+	font-size: 0.9em;
 }
 
 #sidebar table {
