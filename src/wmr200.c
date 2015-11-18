@@ -204,10 +204,10 @@ static void
 process_rain_data(wmr200 *wmr, uchar *data)
 {
 	/* BEGIN CSTYLED */
-	float rate		= (256 * data[ 8] + data[ 7]) * 25.4;
-	float accum_hour	= (256 * data[10] + data[ 9]) * 25.4;
-	float accum_24h		= (256 * data[12] + data[11]) * 25.4;
-	float accum_2007 	= (256 * data[14] + data[13]) * 25.4;
+	float rate		= (256 * data[ 8] + data[ 7]) * 0.254;
+	float accum_hour	= (256 * data[10] + data[ 9]) * 0.254;
+	float accum_24h		= (256 * data[12] + data[11]) * 0.254;
+	float accum_2007 	= (256 * data[14] + data[13]) * 0.254;
 	/* END CSTYLED */
 
 	wmr_reading reading = {
