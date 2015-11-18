@@ -11,6 +11,7 @@
 
 #include "serialize.h"
 #include "wmrdata.h"
+#include "wmr200.h"
 #include "strbuf.h"
 #include "common.h"
 
@@ -408,25 +409,35 @@ deserialize_reading(struct byte_array *arr, wmr_reading *reading)
 void
 serialize_data(struct byte_array *arr, wmr_latest_data *data)
 {
+	uint i;
+
 	serialize_reading(arr, &data->wind);
 	serialize_reading(arr, &data->rain);
 	serialize_reading(arr, &data->uvi);
 	serialize_reading(arr, &data->baro);
-	/* serialize_reading(arr, &data->temp); */
+
+	for (i = 0; i < WMR200_MAX_TEMP_SENSORS; i++)
+		serialize_reading(arr, &data->temp[i]);
+
 	serialize_reading(arr, &data->status);
-	/* serialize_reading(arr, &data->meta); */
+	serialize_reading(arr, &data->meta);
 }
 
 
 void
 deserialize_data(struct byte_array *arr, wmr_latest_data *data)
 {
+	uint i;
+
 	deserialize_reading(arr, &data->wind);
 	deserialize_reading(arr, &data->rain);
 	deserialize_reading(arr, &data->uvi);
 	deserialize_reading(arr, &data->baro);
-	/* deserialize_reading(arr, &data->temp); */
+	
+	for (i = 0; i < WMR200_MAX_TEMP_SENSORS; i++)
+		deserialize_reading(arr, &data->temp[i]);
+
 	deserialize_reading(arr, &data->status);
-	/* deserialize_reading(arr, &data->meta); */
+	deserialize_reading(arr, &data->meta);
 
 }

@@ -374,6 +374,7 @@ emit_meta_packet(wmr200 *wmr)
 		.meta = wmr->meta,
 	};
 
+	wmr->latest.meta = reading;
 	invoke_handlers(wmr, &reading);
 }
 

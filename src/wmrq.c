@@ -20,6 +20,7 @@
 #include <time.h>
 
 #include "wmrdata.h"
+#include "wmr200.h"
 #include "serialize.h"
 #include "loggers/yaml.h"
 
@@ -35,6 +36,7 @@
 int
 main(int argc, const char *argv[])
 {
+	uint i;
 	int fd, ret, n;
 	const char *hostname, *portstr;
 	struct addrinfo hints;
@@ -88,10 +90,17 @@ main(int argc, const char *argv[])
 	wmr_latest_data data;
 	deserialize_data(&arr, &data);
 
-	yaml_push_reading(&data.wind, stderr);
-	yaml_push_reading(&data.rain, stderr);
-	yaml_push_reading(&data.baro, stderr);
-	yaml_push_reading(&data.status, stderr);
+	yaml_push_reading(&data.wind, stdout);
+	yaml_push_reading(&data.rain, stdout);
+	yaml_push_reading(&data.uvi, stdout);
+	
+	for (i = 0; i < WMR200_MAX_TEMP_SENSORS; i++) {
+		yaml_push_reading(&data.temp[i], stdout);
+	}
+
+	yaml_push_reading(&data.baro, stdout);
+	yaml_push_reading(&data.status, stdout);
+	yaml_push_reading(&data.meta, stdout);
 
 	(void) close(fd);
 	DEBUG_MSG("%s", "Connection to server closed");

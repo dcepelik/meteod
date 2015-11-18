@@ -54,3 +54,6 @@ loggers/%.o: loggers/%.c loggers/%.h
 
 clean:
 	rm -rf -- ${BINS} ${OBJS} wmrq.o wmrd.o
+
+install:
+	sudo cp wmrd wmrq /usr/bin

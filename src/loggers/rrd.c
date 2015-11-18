@@ -159,6 +159,8 @@ log_reading(wmr_reading *reading, char *rrd_file)
 		log_temp(&reading->temp);
 		break;
 	}
+
+	DEBUG_MSG("%s", "Logging to RRD");
 }
 
 
