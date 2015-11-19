@@ -131,6 +131,7 @@ log_reading(wmr_reading *reading, FILE *stream)
 	}
 
 	fprintf(stream, "\n");
+	fflush(stream);
 }
 
 

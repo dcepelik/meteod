@@ -22,6 +22,7 @@
 #include <unistd.h>
 #include <syslog.h>
 #include <getopt.h>
+#include <err.h>
 
 
 int flag_daemonize = 0;
@@ -30,14 +31,13 @@ int port = 20892;
 
 static struct option longopts[] = {
 	{ "daemon",		no_argument,		NULL,		'd' },
-	{ "config-file",	required_argument,	NULL,		'c' },
 	{ "run-server",		no_argument,		NULL,		'S' },
 	{ "port",		required_argument,	&port,		'p' },
 	{ "to-file",		required_argument,	NULL,		'F' },
 	{ "to-rrd",		required_argument,	NULL,		'R' },
 };
 
-static const char *optstr = "dc:Sp:F:R:";
+static const char *optstr = "dSp:F:R:";
 
 
 static void
@@ -65,7 +65,7 @@ int
 main(int argc, char *argv[])
 {
 	char *argv0 = argv[0];
-
+	FILE *fp;
 	sigset_t set, oldset;
 	wmr200 *wmr;
 	wmr_server srv;
@@ -80,21 +80,13 @@ main(int argc, char *argv[])
 	wmr_init();
 
 	wmr = wmr_open();
-	//wmr = malloc(sizeof(wmr200));
 	if (wmr == NULL)
 		die("wmr_open: no WMR200 handle returned\n");
-
-	if (wmr_start(wmr) != 0)
-		die("wmr_start: cannot start WMR comm loop\n");
 
 	while ((c = getopt_long(argc, argv, optstr, longopts, NULL)) != -1) {
 		switch (c) {
 		case 'd':
 			flag_daemonize = 1;
-			break;
-
-		case 'c':
-			/* TODO config file? */
 			break;
 
 		case 'S':
@@ -107,13 +99,16 @@ main(int argc, char *argv[])
 			break;
 
 		case 'F':
-			/* TODO take argv into account */
-			wmr_add_handler(wmr, yaml_push_reading, stderr);
+			if (strcmp(optarg, "-") == 0)
+				fp = stdout;
+			else if ((fp = fopen(optarg, "w")) == NULL)
+				err(EXIT_FAILURE, "fopen:");
+
+			wmr_add_handler(wmr, yaml_push_reading, fp);
 			break;
 
 		case 'R':
-			/* TODO take argv into account */
-			wmr_add_handler(wmr, rrd_push_reading, "none");
+			wmr_add_handler(wmr, rrd_push_reading, optarg);
 			break;
 
 		default:
@@ -121,6 +116,9 @@ main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 	}
+
+	if (wmr_start(wmr) != 0)
+		die("wmr_start: cannot start WMR comm loop\n");
 
 	struct sigaction sa;
 	memset(&sa, 0, sizeof (sa));
@@ -142,6 +140,10 @@ main(int argc, char *argv[])
 
 	server_stop(&srv);
 
+	if (fp != NULL)
+		fclose(fp);
+
 	syslog(LOG_NOTICE, "graceful termination\n");
 	return (EXIT_SUCCESS);
 }
+

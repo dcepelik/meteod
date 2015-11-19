@@ -12,7 +12,7 @@
 #       Change to a DS may require additional changes be made to the RRD logger
 #       source file at loggers/rrd.c.
 #
-# Note: the order and number of DS's in a file matters!
+# Note: the order and number of DSs in a file matters!
 #
 
 
@@ -77,6 +77,3 @@ for i in $(seq 0 10); do
 		RRA:MIN:0.5:10:480 \
 		RRA:MIN:0.5:60:480
 done
-
-
-
