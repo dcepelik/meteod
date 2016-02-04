@@ -82,6 +82,7 @@ typedef struct {
 	float error_rate;
 	ulong_t num_bytes;
 	time_t latest_packet;
+	time_t uptime;
 } wmr_meta;
 
 
