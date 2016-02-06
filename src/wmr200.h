@@ -35,6 +35,7 @@ typedef struct { /* move to .c */
 	struct wmr_handler *handler;	/* handlers of "reading ready" event */
 	wmr_latest_data latest;		/* latest readings of all kinds */
 	wmr_meta meta;			/* system meta-packet being made */
+	time_t conn_since;		/* time the connection was started */
 
 	/* receive buffer */
 	uchar buf[WMR200_FRAME_SIZE];

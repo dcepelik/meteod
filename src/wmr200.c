@@ -368,6 +368,8 @@ emit_meta_packet(wmr200 *wmr)
 {
 	DEBUG_MSG("Emitting system META packet 0x%02X", WMR_META);
 
+	wmr->meta.uptime = time(NULL) - wmr->conn_since;
+
 	wmr_reading reading = {
 		.time = time(NULL),
 		.type = WMR_META,
@@ -561,6 +563,7 @@ wmr_open(void)
 	wmr->packet = NULL;
 	wmr->buf_avail = wmr->buf_pos = 0;
 	wmr->handler = NULL;
+	wmr->conn_since = time(NULL);
 	memset(&wmr->latest, 0, sizeof (wmr->latest));
 	memset(&wmr->meta, 0, sizeof (wmr->meta));
 
@@ -619,6 +622,8 @@ wmr_start(wmr200 *wmr)
 		DEBUG_MSG("%s", "Cannot start main communication loop thread");
 		return (-1);
 	}
+
+	send_cmd_frame(wmr, LOGGER_DATA_ERASE);
 
 	DEBUG_MSG("%s", "wmr_start was succesfull");
 	return (0);
