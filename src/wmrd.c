@@ -23,10 +23,12 @@
 #include <syslog.h>
 #include <getopt.h>
 #include <err.h>
+#include <signal.h>
 
 
-int flag_daemonize = 0;
-int flag_run_server = 0;
+sig_atomic_t flag_daemonize = 0;
+sig_atomic_t flag_run_server = 0;
+
 int port = 20892;
 
 static struct option longopts[] = {
@@ -50,7 +52,7 @@ signal_handler(int signum)
 static void
 usage(char *argv0)
 {
-	fprintf(stderr, "%s: usage: %s [OPTIONS]\n", argv0, argv0);
+	fprintf(stderr, "%s: usage: %s <options>\n", argv0, argv0);
 	fprintf(stderr,
 		"\t-d, --daemonize\t\tdaemonize the process\n"
 		"\t-c, --config FILE\tuse config file FILE\n"
