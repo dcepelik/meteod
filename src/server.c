@@ -9,34 +9,30 @@
  */
 
 
+#include "common.h"
+#include "serialize.h"
 #include "server.h"
 #include "strbuf.h"
-#include "serialize.h"
-#include "common.h"
 
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
 #include <err.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <pthread.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <netinet/in.h>
 #include <time.h>
-#include <pthread.h>
+#include <unistd.h>
+
 
 #define	ARRAY_ELEM		unsigned char
 #define	ARRAY_PREFIX(x)		byte_##x
 #include "array.h"
 
-
-static void
-cleanup(wmr_server *srv)
-{
-	if (srv->fd >= 0) {
-		DEBUG_MSG("%s", "Closing server socket");
-		(void) close(srv->fd);
-	}
-}
+#define	DEFAULT_PORT		20892
 
 
 static void
@@ -50,7 +46,7 @@ mainloop(wmr_server *srv)
 		if ((fd = accept(srv->fd, NULL, 0)) == -1)
 			err(1, "accept");
 
-		DEBUG_MSG("Client accepted, socket descriptor is %u", fd);
+		DEBUG_MSG("Client accepted, fd = %u", fd);
 
 		struct byte_array data;
 		byte_array_init(&data);
@@ -58,12 +54,22 @@ mainloop(wmr_server *srv)
 		serialize_data(&data, &srv->wmr->latest);
 
 		if (write(fd, data.elems, data.size) != data.size) {
-			fprintf(stderr, "Cannot send %zu bytes of data\n",
+			DEBUG_MSG("Cannot send %zu bytes of data over network",
 				data.size);
 		}
 
 		(void) close(fd);
 		DEBUG_MSG("%s", "Client socket closed");
+	}
+}
+
+
+static void
+cleanup(wmr_server *srv)
+{
+	if (srv->fd >= 0) {
+		DEBUG_MSG("%s", "Closing server socket");
+		(void) close(srv->fd);
 	}
 }
 
@@ -97,31 +103,45 @@ server_init(wmr_server *srv, wmr200 *wmr)
 int
 server_start(wmr_server *srv)
 {
-	int port = 20892;
+	struct addrinfo *head, *cur;
+	struct addrinfo hints; 
+	int port = DEFAULT_PORT;
+	char portstr[6];
 	int optval = 1;
 	int ret;
 
-	struct sockaddr_in in = {
-		.sin_family = AF_INET,
-		.sin_port = htons(port),
-		.sin_addr.s_addr = htonl(INADDR_ANY),
-	};
+	memset(&hints, 0, sizeof (hints));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_PASSIVE;
 
-	if ((srv->fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-		DEBUG_MSG("%s", "Cannot open server socket");
+	snprintf(portstr, sizeof(portstr), "%u", port);
+
+	if ((ret = getaddrinfo(NULL, portstr, &hints, &head)) != 0) {
+		DEBUG_MSG("getaddrinfo: %s\n", gai_strerror(ret));
 		return (-1);
 	}
 
-	ret = setsockopt(srv->fd, SOL_SOCKET, SO_REUSEADDR,
-		&optval, sizeof (optval));
 
-	if (ret == -1) {
-		DEBUG_MSG("%s", "Cannot set SO_REUSEADDR on server socket");
-		return (-1);
+	for (cur = head; cur != NULL; cur = cur->ai_next) {
+		srv->fd = socket(cur->ai_family,
+			cur->ai_socktype, cur->ai_protocol);
+
+		if (srv->fd == -1) continue;
+
+		/* attempt to set SO_REUSEADDR, if it fails, proceed anyway */
+		ret = setsockopt(srv->fd, SOL_SOCKET, SO_REUSEADDR,
+			&optval, sizeof (optval));
+
+		/* break out if we're bound */
+		if (bind(srv->fd, cur->ai_addr, cur->ai_addrlen) == 0) break;
+
+		(void) close(srv->fd);
 	}
 
-	if (bind(srv->fd, (struct sockaddr *)&in, sizeof (in)) == -1) {
-		DEBUG_MSG("Cannot bind server socket to port %d", port);
+	/* if cur == NULL, we are not bound to any address  */
+	if (cur == NULL) {
+		DEBUG_MSG("%s", "Cannot setup server socket");
 		return (-1);
 	}
 
@@ -133,7 +153,7 @@ server_start(wmr_server *srv)
 	DEBUG_MSG("Server start sucessfull, descriptor is %d", srv->fd);
 
 	if (pthread_create(&srv->thread_id, NULL, mainloop_pthread, srv) != 0) {
-		DEBUG_MSG("%s", "Cannot start main server loop");
+		DEBUG_MSG("%s", "Cannot start server main loop thread");
 		return (-1);
 	}
 
