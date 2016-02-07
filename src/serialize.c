@@ -310,6 +310,7 @@ serialize_meta(struct byte_array *arr, wmr_meta *meta)
 	serialize_float(arr, meta->error_rate);
 	serialize_long(arr, meta->num_bytes);
 	serialize_long(arr, meta->latest_packet);
+	serialize_long(arr, meta->uptime);
 }
 
 
@@ -322,6 +323,7 @@ deserialize_meta(struct byte_array *arr, wmr_meta *meta)
 	meta->error_rate = deserialize_float(arr);
 	meta->num_bytes = deserialize_long(arr);
 	meta->latest_packet = deserialize_long(arr);
+	meta->uptime = deserialize_long(arr);
 }
 
 
