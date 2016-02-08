@@ -20,6 +20,8 @@ exists which provides implementation of a simple website using forementioned
 tools to present your station's readings on the web with pretty much everything
 you would expect.
 
+You can see everything in action at [our WMR200 website](http://meteo.gymlit.cz).
+
 
 ## Installation
 
