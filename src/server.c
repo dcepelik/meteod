@@ -122,22 +122,25 @@ server_start(wmr_server *srv)
 		return (-1);
 	}
 
-
 	for (cur = head; cur != NULL; cur = cur->ai_next) {
 		srv->fd = socket(cur->ai_family,
 			cur->ai_socktype, cur->ai_protocol);
 
-		if (srv->fd == -1) continue;
+		if (srv->fd == -1)
+			continue;
 
 		/* attempt to set SO_REUSEADDR, if it fails, proceed anyway */
-		ret = setsockopt(srv->fd, SOL_SOCKET, SO_REUSEADDR,
+		(void) setsockopt(srv->fd, SOL_SOCKET, SO_REUSEADDR,
 			&optval, sizeof (optval));
 
 		/* break out if we're bound */
-		if (bind(srv->fd, cur->ai_addr, cur->ai_addrlen) == 0) break;
+		if (bind(srv->fd, cur->ai_addr, cur->ai_addrlen) == 0)
+			break;
 
 		(void) close(srv->fd);
 	}
+
+	freeaddrinfo(head);
 
 	/* if cur == NULL, we are not bound to any address  */
 	if (cur == NULL) {

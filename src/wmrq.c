@@ -8,21 +8,21 @@
  * Copyright (c) 2015 David Čepelík <cepelik@gymlit.cz>
  */
 
+#include "loggers/yaml.h"
+#include "serialize.h"
+#include "wmr200.h"
+#include "wmrdata.h"
+
+#include <arpa/inet.h>
+#include <err.h>
+#include <netdb.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <string.h>
-#include <err.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <time.h>
-
-#include "wmrdata.h"
-#include "wmr200.h"
-#include "serialize.h"
-#include "loggers/yaml.h"
+#include <unistd.h>
 
 #define	ARRAY_ELEM		unsigned char
 #define	ARRAY_PREFIX(x)		byte_##x
@@ -40,7 +40,7 @@ main(int argc, const char *argv[])
 	int fd, ret, n;
 	const char *hostname, *portstr;
 	struct addrinfo hints;
-	struct addrinfo *srvinfo, *rp;
+	struct addrinfo *head, *cur;
 
 	if (argc < 3)
 		errx(EXIT_FAILURE, "usage: %s <hostname> <portstr>\n", argv[0]);
@@ -54,25 +54,27 @@ main(int argc, const char *argv[])
 	hints.ai_flags = 0;
 	hints.ai_protocol = 0;
 
-	if ((ret = getaddrinfo(hostname, portstr, &hints, &srvinfo)) != 0)
+	if ((ret = getaddrinfo(hostname, portstr, &hints, &head)) != 0)
 		errx(EXIT_FAILURE, "getaddrinfo failed for '%s': %s\n",
 			hostname, gai_strerror(ret));
 
-	for (rp = srvinfo; rp != NULL; rp = rp->ai_next) {
-		fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+	for (cur = head; cur != NULL; cur = cur->ai_next) {
+		fd = socket(cur->ai_family, cur->ai_socktype, cur->ai_protocol);
 
 		if (fd == -1)
 			continue;
 
-		if (connect(fd, rp->ai_addr, rp->ai_addrlen) != -1)
+		if (connect(fd, cur->ai_addr, cur->ai_addrlen) == 0)
 			break;
 
 		close(fd);
 	}
 
-	freeaddrinfo(srvinfo);
+	freeaddrinfo(head);
 
-	if (rp == NULL) /* no address succeeded */
+
+	/* if cur == NULL, we are not connected  */
+	if (cur == NULL)
 		errx(EXIT_FAILURE, "Cannot connect to '%s'\n", hostname);
 
 	DEBUG_MSG("Connected to '%s'", hostname);
@@ -94,9 +96,8 @@ main(int argc, const char *argv[])
 	yaml_push_reading(&data.rain, stdout);
 	yaml_push_reading(&data.uvi, stdout);
 	
-	for (i = 0; i < WMR200_MAX_TEMP_SENSORS; i++) {
+	for (i = 0; i < WMR200_MAX_TEMP_SENSORS; i++)
 		yaml_push_reading(&data.temp[i], stdout);
-	}
 
 	yaml_push_reading(&data.baro, stdout);
 	yaml_push_reading(&data.status, stdout);

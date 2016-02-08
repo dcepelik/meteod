@@ -11,6 +11,8 @@
 #ifndef DAEMON_H
 #define DAEMON_H
 
+#define UMASK	227
+
 
 void daemonize(const char *argv0);
 

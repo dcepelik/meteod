@@ -13,18 +13,20 @@ of the Oregon Scientific WMR200 weather station.
 * `wmrc`, client to the server component of `wmrd` capable of querying current
 	readings over TCP/IP
 * `wmrformat`, Perl script which queries current readings using `wmrc` and allows
-	you to print nice formatted strings
+	you to print nicely formatted strings
 
 A complementary project [wmr200-website](https://github.com/dcepelik/wmr200-website.git)
 exists which provides implementation of a simple website using forementioned
 tools to present your station's readings on the web with pretty much everything
 you would expect.
 
+You can see everything in action at [our WMR200 website](http://meteo.gymlit.cz).
+
 
 ## Installation
 
 Run `make` to make the application and `make install` to install the binaries
-to `/usr/bin`.
+to `/usr/bin`
 
 If you plan on using the application's RRD logger, create RRD files from scratch
 using `rrd_create.sh` script bundled with the sources. For example, to create

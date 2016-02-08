@@ -90,6 +90,7 @@ log_meta(wmr_meta *meta, FILE *stream)
 	fprintf(stream, "error_rate: %.1f\n", meta->error_rate);
 	fprintf(stream, "num_bytes: %li\n", meta->num_bytes);
 	fprintf(stream, "latest_packet: %li\n", meta->latest_packet);
+	fprintf(stream, "uptime: %li\n", meta->uptime);
 }
 
 
