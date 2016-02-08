@@ -7,7 +7,6 @@ CFLAGS=-c \
 	`pkg-config --cflags hidapi-libusb librrd` \
 	-Wall --pedantic -g \
 	-Wno-unused-function \
-	-DDEBUG \
 	-I.
 
 LDFLAGS=`pkg-config --libs hidapi-libusb librrd` \
@@ -56,4 +55,4 @@ clean:
 	rm -rf -- ${BINS} ${OBJS} wmrq.o wmrd.o
 
 install:
-	sudo cp wmrd wmrq /usr/bin
+	sudo cp ${BINS} /usr/bin
