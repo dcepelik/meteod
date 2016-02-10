@@ -8,44 +8,42 @@
  * Copyright (c) 2015 David Čepelík <cepelik@gymlit.cz>
  */
 
-#include "wmr200.h"
 #include "daemon.h"
-#include "server.h"
-#include "loggers/yaml.h"
+#include "log.h"
 #include "loggers/rrd.h"
 #include "loggers/server.h"
+#include "loggers/yaml.h"
+#include "server.h"
+#include "wmr200.h"
 
-#include <stdio.h>
+#include <err.h>
+#include <getopt.h>
 #include <pthread.h>
 #include <signal.h>
+#include <signal.h>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <syslog.h>
-#include <getopt.h>
-#include <err.h>
-#include <signal.h>
 
 
-sig_atomic_t flag_daemonize = 0;
-sig_atomic_t flag_run_server = 0;
+int flag_start_server = 0;
 
 int port = 20892;
 
 static struct option longopts[] = {
-	{ "daemon",		no_argument,		NULL,		'd' },
 	{ "run-server",		no_argument,		NULL,		'S' },
 	{ "port",		required_argument,	&port,		'p' },
 	{ "to-file",		required_argument,	NULL,		'F' },
 	{ "to-rrd",		required_argument,	NULL,		'R' },
 };
 
-static const char *optstr = "dSp:F:R:";
+static const char *optstr = "Sp:F:R:";
 
 
 static void
 signal_handler(int signum)
 {
-	DEBUG_MSG("Caught signal %d (%s)", signum, strsignal(signum));
+	log_debug("Caught signal %d (%s)", signum, strsignal(signum));
 }
 
 
@@ -54,7 +52,6 @@ usage(char *argv0)
 {
 	fprintf(stderr, "%s: usage: %s <options>\n", argv0, argv0);
 	fprintf(stderr,
-		"\t-d, --daemonize\t\tdaemonize the process\n"
 		"\t-c, --config FILE\tuse config file FILE\n"
 		"\t-S, --server\t\tuse logging server\n"
 		"\t-F, --file FILE\t\tlog readings to FILE\n"
@@ -73,38 +70,31 @@ main(int argc, char *argv[])
 	wmr_server srv;
 	int c;
 
-	/* mask signals away from spawned threads */
+	log_open_syslog();
+
+	/* hide signals away from created threads */
 	sigemptyset(&set);
 	sigaddset(&set, SIGINT);
 	sigaddset(&set, SIGTERM);
 	pthread_sigmask(SIG_BLOCK, &set, &oldset);
 
 	wmr_init();
-
 	wmr = wmr_open();
+
 	if (wmr == NULL)
-		die("wmr_open: no WMR200 handle returned\n");
+		log_exit(LOG_CRIT, "wmr_open: no WMR200 handle returned\n");
 
 	while ((c = getopt_long(argc, argv, optstr, longopts, NULL)) != -1) {
 		switch (c) {
-		case 'd':
-			flag_daemonize = 1;
-			break;
 
 		case 'S':
-			server_init(&srv, wmr);
-			if (server_start(&srv) != 0)
-				die("server_start: cannot start the WMR server "
-					"instance\n");
-
-			wmr_add_handler(wmr, server_push_reading, &srv);
-			break;
-
+			flag_start_server = 1;
+			
 		case 'F':
 			if (strcmp(optarg, "-") == 0)
 				fp = stdout;
 			else if ((fp = fopen(optarg, "w")) == NULL)
-				err(EXIT_FAILURE, "fopen:");
+				log_exit(LOG_ALERT, "Cannot open output file");
 
 			wmr_add_handler(wmr, yaml_push_reading, fp);
 			break;
@@ -119,8 +109,19 @@ main(int argc, char *argv[])
 		}
 	}
 
+	if (flag_start_server) {
+		server_init(&srv, wmr);
+
+		if (server_start(&srv) != 0)
+			log_exit(LOG_ALERT, "Cannot start server\n");
+
+		wmr_add_handler(wmr, server_push_reading, &srv);
+	}
+
 	if (wmr_start(wmr) != 0)
-		die("wmr_start: cannot start WMR comm loop\n");
+		log_msg(LOG_CRIT, "Cannot start communication with WMR200\n");
+
+	pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 
 	struct sigaction sa;
 	memset(&sa, 0, sizeof (sa));
@@ -128,11 +129,7 @@ main(int argc, char *argv[])
 	sigaction(SIGTERM, &sa, NULL);
 	sigaction(SIGINT, &sa, NULL);
 
-	pthread_sigmask(SIG_SETMASK, &oldset, NULL);
-
-	if (flag_daemonize) 
-		daemonize(argv0);
-
+	daemonize(argv0);
 
 	pause(); /* wait here for SIGINT or SIGTERM to arrive */
 
@@ -145,7 +142,7 @@ main(int argc, char *argv[])
 	if (fp != NULL)
 		fclose(fp);
 
-	syslog(LOG_NOTICE, "graceful termination\n");
+	log_msg(LOG_NOTICE, "Graceful termination\n");
 	return (EXIT_SUCCESS);
 }
 

@@ -50,9 +50,6 @@ P(array_push_prepare)(struct P(array) *arr, size_t new_count)
 			2 * arr->capacity,
 			arr->size + arr->offset + new_count);
 
-		DEBUG_MSG("Expanding array capacity from %zu to %zu elements",
-			arr->capacity, new_capacity);
-
 		arr->mry = realloc_safe(arr->mry, new_capacity);
 		arr->elems = arr->mry + arr->offset;
 		arr->capacity = new_capacity;
