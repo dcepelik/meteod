@@ -9,10 +9,11 @@
  */
 
 
-#include "rrd.h"
-#include "wmrdata.h"
-#include "strbuf.h"
 #include "common.h"
+#include "log.h"
+#include "rrd.h"
+#include "strbuf.h"
+#include "wmrdata.h"
 
 #include <rrd.h>
 #include <time.h>
@@ -36,8 +37,8 @@ write_rrd(char *file_rel_path, char *rrd_root, strbuf *data)
 
 	int ret = rrd_update(3, update_params);
 	if (ret != 0) {
-		DEBUG_MSG("rrd_update() failed with return code %i", ret);
-		DEBUG_MSG("rrd_get_error(): %s", rrd_get_error());
+		log_error("rrd_update: failed with return code %i", ret);
+		log_error("rrd_get_error: %s", rrd_get_error());
 
 		rrd_clear_error();
 	}

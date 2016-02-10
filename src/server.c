@@ -10,6 +10,7 @@
 
 
 #include "common.h"
+#include "log.h"
 #include "serialize.h"
 #include "server.h"
 #include "strbuf.h"
@@ -40,13 +41,13 @@ mainloop(wmr_server *srv)
 {
 	int fd;
 
-	DEBUG_MSG("%s", "Entering server main loop");
+	log_info("%s", "Entering server main loop");
 	for (;;) {
 		/* POSIX.1: accept is a cancellation point */
 		if ((fd = accept(srv->fd, NULL, 0)) == -1)
 			err(1, "accept");
 
-		DEBUG_MSG("Client accepted, fd = %u", fd);
+		log_debug("Client accepted, fd = %u", fd);
 
 		struct byte_array data;
 		byte_array_init(&data);
@@ -54,12 +55,12 @@ mainloop(wmr_server *srv)
 		serialize_data(&data, &srv->wmr->latest);
 
 		if (write(fd, data.elems, data.size) != data.size) {
-			DEBUG_MSG("Cannot send %zu bytes of data over network",
-				data.size);
+			log_warning("Cannot send %zu bytes of data over "
+				"the network", data.size);
 		}
 
 		(void) close(fd);
-		DEBUG_MSG("%s", "Client socket closed");
+		log_debug("%s", "Client socket closed");
 	}
 }
 
@@ -68,7 +69,7 @@ static void
 cleanup(wmr_server *srv)
 {
 	if (srv->fd >= 0) {
-		DEBUG_MSG("%s", "Closing server socket");
+		log_info("%s", "Closing server socket");
 		(void) close(srv->fd);
 	}
 }
@@ -118,7 +119,7 @@ server_start(wmr_server *srv)
 	snprintf(portstr, sizeof(portstr), "%u", port);
 
 	if ((ret = getaddrinfo(NULL, portstr, &hints, &head)) != 0) {
-		DEBUG_MSG("getaddrinfo: %s\n", gai_strerror(ret));
+		log_error("getaddrinfo: %s\n", gai_strerror(ret));
 		return (-1);
 	}
 
@@ -144,19 +145,19 @@ server_start(wmr_server *srv)
 
 	/* if cur == NULL, we are not bound to any address  */
 	if (cur == NULL) {
-		DEBUG_MSG("%s", "Cannot setup server socket");
+		log_error("%s", "Cannot setup server socket");
 		return (-1);
 	}
 
 	if (listen(srv->fd, SOMAXCONN) == -1) {
-		DEBUG_MSG("%s", "Cannot start listening");
+		log_error("%s", "Cannot start listening");
 		return (-1);
 	}
 
-	DEBUG_MSG("Server start sucessfull, descriptor is %d", srv->fd);
+	log_info("Server start sucessfull, descriptor is %d", srv->fd);
 
 	if (pthread_create(&srv->thread_id, NULL, mainloop_pthread, srv) != 0) {
-		DEBUG_MSG("%s", "Cannot start server main loop thread");
+		log_error("%s", "Cannot start server main loop thread");
 		return (-1);
 	}
 

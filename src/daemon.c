@@ -114,8 +114,6 @@ drop_root_privileges(void)
 void
 daemonize(const char *argv0)
 {
-	openlog(argv0, LOG_NOWAIT | LOG_PID, LOG_USER);
-
 	detach_from_parent();
 	jail();
 	drop_root_privileges();

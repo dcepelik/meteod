@@ -8,7 +8,6 @@
  * Copyright (c) 2015 David Čepelík <cepelik@gymlit.cz>
  */
 
-
 #include "strbuf.h"
 
 #include <stdio.h>

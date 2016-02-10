@@ -9,15 +9,16 @@
  */
 
 
+#include "common.h"
+#include "log.h"
 #include "wmr200.h"
 #include "wmrdata.h"
-#include "common.h"
 
+#include <pthread.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 #include <time.h>
-#include <pthread.h>
+#include <unistd.h>
 
 #include <hidapi.h>
 
@@ -96,7 +97,7 @@ read_byte(wmr200 *wmr)
 		wmr->meta.num_frames++;
 
 		if (ret != WMR200_FRAME_SIZE) {
-			DEBUG_MSG("%s", "Cannot read frame");
+			log_warning("Cannot read frame\n");
 		}
 
 		wmr->buf_avail = wmr->buf[0];
@@ -127,7 +128,7 @@ send_cmd_frame(wmr200 *wmr, uchar cmd)
 static void
 send_heartbeat(wmr200 *wmr)
 {
-	DEBUG_MSG("%s", "Sending heartbeat to WMR200");
+	log_debug("Sending heartbeat to WMR200");
 	send_cmd_frame(wmr, HEARTBEAT);
 }
 
@@ -352,8 +353,8 @@ process_historic_data(wmr200 *wmr, uchar *data)
 
 	uint_t ext_sensor_count = data[32];
 	if (ext_sensor_count > WMR200_MAX_TEMP_SENSORS) {
-		DEBUG_MSG("%s", "process_historic_data: too many external "
-			"sensor, skipping (no offense)");
+		log_warning("process_historic_data: too many external sensors, "
+			"skipping extraneous sensors");
 	}
 	ext_sensor_count = MIN(ext_sensor_count, WMR200_MAX_TEMP_SENSORS);
 
@@ -366,7 +367,7 @@ process_historic_data(wmr200 *wmr, uchar *data)
 static void
 emit_meta_packet(wmr200 *wmr)
 {
-	DEBUG_MSG("Emitting system META packet 0x%02X", WMR_META);
+	log_debug("Emitting system META packet 0x%02X", WMR_META);
 
 	wmr->meta.uptime = time(NULL) - wmr->conn_since;
 
@@ -444,7 +445,7 @@ dispatch_packet(wmr200 *wmr)
 		break;
 
 	default:
-		DEBUG_MSG("Ignoring unknown packet 0x%02X", wmr->packet_type);
+		log_warning("Ignoring unknown packet 0x%02X", wmr->packet_type);
 	}
 }
 
@@ -458,23 +459,20 @@ mainloop(wmr200 *wmr)
 act_on_packet_type:
 		switch (wmr->packet_type) {
 		case HISTORIC_DATA_NOTIF:
-			DEBUG_MSG("%s", "Data logger contains some unprocessed "
+			log_info("Data logger contains some unprocessed "
 				"historic records");
-
-			DEBUG_MSG("%s", "Issuing REQUEST_HISTORIC_DATA "
-				"command");
+			log_info("Issuing REQUEST_HISTORIC_DATA command");
 
 			send_cmd_frame(wmr, REQUEST_HISTORIC_DATA);
 			continue;
 
 		case LOGGER_DATA_ERASE:
-			DEBUG_MSG("%s", "Data logger database purge "
-				"successful");
+			log_info("Data logger database purge successful");
 			continue;
 
 		case COMMUNICATION_STOP:
 			/* ignore, response to prev COMMUNICATION_STOP packet */
-			DEBUG_MSG("%s", "Ignoring COMMUNICATION_STOP packet");
+			log_debug("Ignoring COMMUNICATION_STOP packet");
 			break;
 		}
 
@@ -496,13 +494,13 @@ act_on_packet_type:
 		wmr->meta.num_packets++;
 
 		if (verify_packet(wmr) != 0) {
-			DEBUG_MSG("%s", "Packet incorrect, dropping");
+			log_warning("Received incorrect packet, dropping");
 			wmr->meta.num_failed++;
 			continue;
 		}
 
-		DEBUG_MSG("Packet 0x%02X (%u bytes)",
-			wmr->packet_type, wmr->packet_len);
+		log_debug("Packet 0x%02X (%u bytes)", wmr->packet_type,
+			wmr->packet_len);
 
 		wmr->meta.latest_packet = time(NULL);
 		dispatch_packet(wmr);
@@ -556,7 +554,7 @@ wmr_open(void)
 
 	wmr->dev = hid_open(VENDOR_ID, PRODUCT_ID, NULL);
 	if (wmr->dev == NULL) {
-		DEBUG_MSG("%s", "hid_open: cannot connect to WMR200");
+		log_error("hid_open: cannot connect to WMR200");
 		return (NULL);
 	}
 
@@ -574,7 +572,8 @@ wmr_open(void)
 	};
 
 	if (hid_write(wmr->dev, abracadabra, 8) != 8) {
-		DEBUG_MSG("%s", "Cannot initialize communication with WMR200");
+		log_error("hid_write: cannot initialize communication with "
+			"WMR200");
 		return (NULL);
 	}
 
@@ -613,19 +612,19 @@ wmr_start(wmr200 *wmr)
 {
 	if (pthread_create(&wmr->heartbeat_thread,
 		NULL, heartbeat_loop_pthread, wmr) != 0) {
-		DEBUG_MSG("%s", "Cannot start heartbeat loop thread");
+		log_error("Cannot start heartbeat loop thread");
 		return (-1);
 	}
 
 	if (pthread_create(&wmr->mainloop_thread,
 		NULL, mainloop_pthread, wmr) != 0) {
-		DEBUG_MSG("%s", "Cannot start main communication loop thread");
+		log_error("Cannot start main communication loop thread");
 		return (-1);
 	}
 
 	send_cmd_frame(wmr, LOGGER_DATA_ERASE);
 
-	DEBUG_MSG("%s", "wmr_start was succesfull");
+	log_info("wmr_start was succesfull");
 	return (0);
 }
 
