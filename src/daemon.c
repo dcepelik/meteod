@@ -71,8 +71,8 @@ jail(void)
 static void
 drop_root_privileges(void)
 {
-	gid_t group_id = 1001;
-	uid_t user_id = 1001;
+	gid_t group_id = 1006;
+	uid_t user_id = 1006;
 
 	if (setgid(group_id) == -1)
 		log_exit("Canot setgid to %d (%s), will exit\n",
