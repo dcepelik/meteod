@@ -82,7 +82,7 @@ main(int argc, char *argv[])
 	wmr = wmr_open();
 
 	if (wmr == NULL)
-		log_exit(LOG_CRIT, "wmr_open: no WMR200 handle returned\n");
+		log_exit("wmr_open: no WMR200 handle returned\n");
 
 	while ((c = getopt_long(argc, argv, optstr, longopts, NULL)) != -1) {
 		switch (c) {
@@ -94,7 +94,7 @@ main(int argc, char *argv[])
 			if (strcmp(optarg, "-") == 0)
 				fp = stdout;
 			else if ((fp = fopen(optarg, "w")) == NULL)
-				log_exit(LOG_ALERT, "Cannot open output file");
+				log_exit("Cannot open output file");
 
 			wmr_add_handler(wmr, yaml_push_reading, fp);
 			break;
@@ -113,7 +113,7 @@ main(int argc, char *argv[])
 		server_init(&srv, wmr);
 
 		if (server_start(&srv) != 0)
-			log_exit(LOG_ALERT, "Cannot start server\n");
+			log_exit("Cannot start server\n");
 
 		wmr_add_handler(wmr, server_push_reading, &srv);
 	}

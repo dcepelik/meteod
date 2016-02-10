@@ -10,6 +10,7 @@
 
 #include "daemon.h"
 #include "common.h"
+#include "log.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -17,7 +18,6 @@
 #include <err.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <syslog.h>
 #include <errno.h>
 #include <string.h>
 
@@ -30,7 +30,7 @@ detach_from_parent(void)
 	
 	pid1 = fork();
 	if (pid1 < 0)
-		err(EXIT_FAILURE, "fork");
+		log_exit("Cannot fork\n");
 	else if (pid1 > 0)
 		exit(EXIT_SUCCESS);
 
@@ -39,26 +39,19 @@ detach_from_parent(void)
 	fclose(stderr);
 
 	sid = setsid();
-	if (sid < 0) {
-		syslog(LOG_ERR, "Could not create new session\n");
-		exit(EXIT_FAILURE);
-	}
+	if (sid < 0)
+		log_exit("Could not create new session\n");
 
 	pid2 = fork();
-	if (pid2 < 0) {
-		syslog(LOG_ERR, "Cannot fork() second time\n");
-		exit(EXIT_FAILURE);
-	}
-	else if (pid2 > 0) {
+	if (pid2 < 0)
+		log_exit("Cannot fork second time\n");
+	else if (pid2 > 0)
 		exit(EXIT_SUCCESS);
-	}
 
-	if (setpgrp() == -1) {
-		syslog(LOG_ERR, "Cannot set process group\n");
-		exit(EXIT_FAILURE);
-	}
+	if (setpgrp() == -1)
+		log_exit("Cannot set process group\n");
 
-	syslog(LOG_INFO, "Running as PID %d\n", pid2);
+	log_info("Running as PID %d\n", pid2);
 }
 
 
@@ -67,15 +60,11 @@ jail(void)
 {
 	umask(UMASK);
 
-	if (chdir("/var/wmrd") == -1) {
-		syslog(LOG_ERR, "Cannot chdir to /, will exit\n");
-		exit(EXIT_FAILURE);
-	}
+	if (chdir("/var/wmrd") == -1)
+		log_exit("Cannot chdir to /, will exit\n");
 
-	if (chroot("/var/wmrd") == -1) {
-		syslog(LOG_ERR, "Cannot chroot to /var/wmrd, will exit\n");
-		exit(EXIT_FAILURE);
-	}
+	if (chroot("/var/wmrd") == -1)
+		log_exit("Cannot chroot to /var/wmrd, will exit\n");
 }
 
 
@@ -85,24 +74,18 @@ drop_root_privileges(void)
 	gid_t group_id = 1001;
 	uid_t user_id = 1001;
 
-	if (setgid(group_id) == -1) {
-		syslog(LOG_ERR, "Canot setgid to %d (%s), will exit\n",
+	if (setgid(group_id) == -1)
+		log_exit("Canot setgid to %d (%s), will exit\n",
 			group_id, strerror(errno));
-		exit(EXIT_FAILURE);
-	}
 
-	if (setuid(user_id) == -1) {
-		syslog(LOG_ERR, "Cannot setuid to %d (errno %d), will exit\n",
+	if (setuid(user_id) == -1)
+		log_exit("Cannot setuid to %d (errno %d), will exit\n",
 			errno, user_id);
-		exit(EXIT_FAILURE);
-	}
 
-	if (setuid(0) != -1) {
-		syslog(LOG_ERR, "Root privileges not relinquished correctly");
-		exit(EXIT_FAILURE);
-	}
+	if (setuid(0) != -1)
+		log_exit("Root privileges not relinquished correctly");
 
-	syslog(LOG_INFO, "Dropped root priviliges\n");
+	log_info("Dropped root priviliges\n");
 }
 
 
