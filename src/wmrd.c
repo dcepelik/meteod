@@ -26,6 +26,7 @@
 #include <unistd.h>
 
 
+volatile sig_atomic_t exit_flag = 0;
 int flag_start_server = 0;
 
 int port = 20892;
@@ -43,7 +44,11 @@ static const char *optstr = "Sp:F:R:";
 static void
 signal_handler(int signum)
 {
-	log_debug("Caught signal %d (%s)", signum, strsignal(signum));
+	switch (signum) {
+	case SIGINT:
+	case SIGTERM:
+		exit_flag = 1;
+	}
 }
 
 
@@ -77,7 +82,6 @@ main(int argc, char *argv[])
 	sigaddset(&set, SIGINT);
 	sigaddset(&set, SIGTERM);
 	pthread_sigmask(SIG_BLOCK, &set, &oldset);
-
 	wmr_init();
 	wmr = wmr_open();
 
@@ -131,7 +135,11 @@ main(int argc, char *argv[])
 
 	daemonize(argv0);
 
-	pause(); /* wait here for SIGINT or SIGTERM to arrive */
+	while (1) {
+		pause(); /* wait here for a signal to arrive */
+		if (exit_flag)
+			break;
+	}
 
 	wmr_stop(wmr);
 	wmr_close(wmr);

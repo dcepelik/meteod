@@ -19,7 +19,7 @@ use Data::Dumper;
 my $format = shift @ARGV
 	or die "Usage: ...\n";
 
-my $src = qx( wmrq 127.0.0.1 20892 );
+my $src = qx( wmrq delta.gymlit.cz 20892 );
 my $yaml = YAML::Tiny->read_string($src);
 
 my %readings = ();

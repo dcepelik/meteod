@@ -11,6 +11,7 @@
 #include "daemon.h"
 #include "common.h"
 #include "log.h"
+#include "string.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -58,13 +59,18 @@ detach_from_parent(void)
 static void
 jail(void)
 {
+	int ret;
+	char *chdir_dir = "/var/wmrd";
+
 	umask(UMASK);
 
-	if (chdir("/var/wmrd") == -1)
-		log_exit("Cannot chdir to /, will exit\n");
+	if ((ret = chdir(chdir_dir)) == -1)
+		log_exit("Cannot chdir to %s (%s), will exit\n",
+			chdir_dir, strerror(errno));
 
-	if (chroot("/var/wmrd") == -1)
-		log_exit("Cannot chroot to /var/wmrd, will exit\n");
+	if ((ret = chroot(chdir_dir)) == -1)
+		log_exit("Cannot chroot to %s (%s), will exit\n",
+			chdir_dir, strerror(errno));
 }
 
 
