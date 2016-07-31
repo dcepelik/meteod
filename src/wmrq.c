@@ -67,13 +67,13 @@ main(int argc, const char *argv[])
 		if (connect(fd, cur->ai_addr, cur->ai_addrlen) == 0)
 			break;
 
-		close(fd);
+		(void) close(fd);
 	}
 
 	freeaddrinfo(head);
 
 
-	/* if cur == NULL, we are not connected  */
+	/* when cur == NULL, we are not connected  */
 	if (cur == NULL)
 		errx(EXIT_FAILURE, "Cannot connect to '%s'\n", hostname);
 

@@ -1,5 +1,5 @@
-/*
- * loggers/server.c:
+	/*
+	 * loggers/server.c:
  * Server component of the WMR daemon
  *
  * This software may be freely used and distributed according to the terms
@@ -54,10 +54,7 @@ mainloop(wmr_server *srv)
 
 		serialize_data(&data, &srv->wmr->latest);
 
-		if (write(fd, data.elems, data.size) != data.size) {
-			log_warning("Cannot send %zu bytes of data over "
-				"the network", data.size);
-		}
+		while (write(fd, data.elems, data.size) >= 0);
 
 		(void) close(fd);
 		log_debug("%s", "Client socket closed");
@@ -66,8 +63,10 @@ mainloop(wmr_server *srv)
 
 
 static void
-cleanup(wmr_server *srv)
+cleanup(void *arg)
 {
+	wmr_server *srv = (wmr_server *)arg;
+
 	if (srv->fd >= 0) {
 		log_info("%s", "Closing server socket");
 		(void) close(srv->fd);

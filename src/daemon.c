@@ -103,6 +103,8 @@ drop_root_privileges(void)
 void
 daemonize(const char *argv0)
 {
+	(void) argv0;
+
 	detach_from_parent();
 	jail();
 	drop_root_privileges();

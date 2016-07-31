@@ -130,6 +130,9 @@ P(array_shift)(struct P(array) *arr)
 static void
 P(array_unshift)(struct P(array) *arr, ARRAY_ELEM elem)
 {
+	(void) arr;
+	(void) elem;
+
 	die("array_unshift is not supported at the moment\n");
 }
 

@@ -19,5 +19,8 @@
 void
 server_push_reading(wmr_reading *reading, void *arg)
 {
+	(void) reading;
+	(void) arg;
+
 	/* TODO implement this */
 }

@@ -23,8 +23,8 @@
 
 typedef struct {
 	char *str;
-	size_t size; /* excl. the '\0' */
-	size_t offset; /* offset always points to the last written '\0' */
+	size_t size;	/* excl. the '\0' */
+	size_t offset;	/* offset always points to the last written '\0' */
 } strbuf;
 
 
@@ -71,9 +71,6 @@ char *strbuf_copy(strbuf *buf);
 void strbuf_free(strbuf *buf);
 
 
-/*
- *
- */
 void strbuf_prepend(strbuf *buf, char *format, ...);
 
 

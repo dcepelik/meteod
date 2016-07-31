@@ -67,7 +67,7 @@ deserialize_long(struct byte_array *arr)
 {
 	long be64 = 0;
 	char sign;
-	int i;
+	unsigned i;
 
 	sign = deserialize_char(arr);
 	for (i = 0; i < sizeof (be64); i++) {
