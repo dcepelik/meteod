@@ -22,9 +22,7 @@
 #define	WMR200_FRAME_SIZE		8
 #define	WMR200_MAX_TEMP_SENSORS		10
 
-
 typedef void (*wmr_handler_t)(wmr_reading *reading, void *arg);
-
 
 struct wmr_handler;
 
@@ -48,26 +46,12 @@ typedef struct { /* move to .c */
 	uint_t packet_len;
 } wmr200;
 
-
 void wmr_init();
-
-
 void wmr_end();
-
-
 wmr200 *wmr_open();
-
-
 int wmr_start(wmr200 *wmr);
-
-
 void wmr_stop(wmr200 *wmr);
-
-
 void wmr_close(wmr200 *wmr);
-
-
 void wmr_add_handler(wmr200 *wmr, wmr_handler_t handler, void *arg);
-
 
 #endif

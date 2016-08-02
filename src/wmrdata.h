@@ -5,7 +5,8 @@
  * This software may be freely used and distributed according to the terms
  * of the GNU GPL version 2 or 3. See LICENSE for more information.
  *
- * Copyright (c) 2015 David Čepelík <cepelik@gymlit.cz> */
+ * Copyright (c) 2015 David Čepelík <cepelik@gymlit.cz>
+ */
 
 #ifndef WMRDATA_H
 #define	WMRDATA_H
@@ -14,13 +15,15 @@
 #include "strbuf.h"
 
 
-#define	WMR_WIND		0xD3
-#define	WMR_RAIN		0xD4
-#define	WMR_UVI			0xD5
-#define	WMR_BARO		0xD6
-#define	WMR_TEMP		0xD7
-#define	WMR_STATUS		0xD9
-#define	WMR_META		0xFF		/* system meta-packet */
+enum packet_type {
+	WMR_WIND = 0xD3,
+	WMR_RAIN = 0xD4,
+	WMR_UVI	 = 0xD5,
+	WMR_BARO = 0xD6,
+	WMR_TEMP = 0xD7,
+	WMR_STATUS = 0xD9,
+	WMR_META = 0xFF		/* system meta-packet */
+};
 
 
 typedef struct {

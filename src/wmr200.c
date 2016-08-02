@@ -8,41 +8,44 @@
  * Copyright (c) 2015 David Čepelík <cepelik@gymlit.cz>
  */
 
-
 #include "common.h"
 #include "log.h"
 #include "wmr200.h"
 #include "wmrdata.h"
 
+#include <hidapi.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
 
-#include <hidapi.h>
 
+#define	NTH_BIT(n, val)		(((val) >> (n)) & 1)
+#define	LOW(b)			((b) &  0xF)
+#define	HIGH(b)			LOW((b) >> 4)
 
 #define	VENDOR_ID		0x0FDE
 #define	PRODUCT_ID		0xCA01
 
-#define	HEARTBEAT		0xD0
-#define	HISTORIC_DATA_NOTIF	0xD1
-#define	HISTORIC_DATA		0xD2
-#define	REQUEST_HISTORIC_DATA	0xDA
-#define	LOGGER_DATA_ERASE	0xDB
-#define	COMMUNICATION_STOP	0xDF
-
 #define	HEARTBEAT_INTERVAL_SEC	30
 
-#define	SIGN_POSITIVE		0x0
-#define	SIGN_NEGATIVE		0x8
+#define	TENTH_OF_INCH		0.0254
 
 
-#define	NTH_BIT(n, val)		(((val) >> (n)) & 1)
-#define	HIGH(b)			LOW((b) >> 4)
-#define	LOW(b)			((b) &  0xF)
+enum command {
+	HEARTBEAT = 0xD0,
+	HISTORIC_DATA_NOTIF = 0xD1,
+	HISTORIC_DATA = 0xD2,
+	REQUEST_HISTORIC_DATA = 0xDA,
+	LOGGER_DATA_ERASE = 0xDB,
+	COMMUNICATION_STOP = 0xDF
+};
 
+enum sign {
+	SIGN_POSITIVE = 0x0,
+	SIGN_NEGATIVE = 0x8
+};
 
 struct wmr_handler {
 	wmr_handler_t handler;
@@ -50,47 +53,42 @@ struct wmr_handler {
 	struct wmr_handler *next;
 };
 
-
 /*
  * flag-to-string arrays
  */
 
-
 /* signal leves */
-static const char *LEVEL[] = {
+static const char *LEVEL_STRING[] = {
 	"ok",
 	"low"
 };
 
 /* status flags */
-static const char *STATUS[] = {
+static const char *STATUS_STRING[] = {
 	"ok",
 	"failed"
 };
 
 /* forecast "icons" */
-static const char *FORECAST[] = {
+static const char *FORECAST_STRING[] = {
 	"partly_cloudy-day", "rainy", "cloudy",
 	"sunny", "clear", "snowy",
 	"partly_cloudy-night"
 };
 
 /* wind direction */
-static const char *WIND_DIRECTION[] = {
+static const char *WIND_DIR_STRING[] = {
 	"N", "NNE", "NE", "ENE",
 	"E", "ESE", "SE", "SSE",
 	"S", "SSW", "SW", "WSW",
 	"W", "WNW", "NW", "NNW"
 };
 
-
 /*
  * sending and receiving data
  */
 
-
-static uchar
-read_byte(wmr200 *wmr)
+static uchar read_byte(wmr200 *wmr)
 {
 	if (wmr->buf_avail == 0) {
 		int ret = hid_read(wmr->dev, wmr->buf, WMR200_FRAME_SIZE);
@@ -109,9 +107,7 @@ read_byte(wmr200 *wmr)
 	return (wmr->buf[wmr->buf_pos++]);
 }
 
-
-static void
-send_cmd_frame(wmr200 *wmr, uchar cmd)
+static void send_cmd_frame(wmr200 *wmr, uchar cmd)
 {
 	uchar data[WMR200_FRAME_SIZE] = { 0x01, cmd };
 	int ret = hid_write(wmr->dev, data, WMR200_FRAME_SIZE);
@@ -124,22 +120,17 @@ send_cmd_frame(wmr200 *wmr, uchar cmd)
 	}
 }
 
-
-static void
-send_heartbeat(wmr200 *wmr)
+static void send_heartbeat(wmr200 *wmr)
 {
 	log_debug("Sending heartbeat to WMR200");
 	send_cmd_frame(wmr, HEARTBEAT);
 }
 
-
 /*
  * data processing
  */
 
-
-static time_t
-get_reading_time_from_packet(wmr200 *wmr)
+static time_t get_reading_time_from_packet(wmr200 *wmr)
 {
 	struct tm time = {
 		.tm_year	= (2000 + wmr->packet[6]) - 1900,
@@ -154,9 +145,7 @@ get_reading_time_from_packet(wmr200 *wmr)
 	return (mktime(&time));
 }
 
-
-static void
-invoke_handlers(wmr200 *wmr, wmr_reading *reading)
+static void invoke_handlers(wmr200 *wmr, wmr_reading *reading)
 {
 	struct wmr_handler *handler = wmr->handler;
 	while (handler != NULL) {
@@ -165,31 +154,25 @@ invoke_handlers(wmr200 *wmr, wmr_reading *reading)
 	}
 }
 
-
-static void
-update_if_newer(wmr_reading *old, wmr_reading *new)
+static void update_if_newer(wmr_reading *old, wmr_reading *new)
 {
 	if (new->time >= old->time) {
 		*old = *new;
 	}
 }
 
-
-static void
-process_wind_data(wmr200 *wmr, uchar *data)
+static void process_wind_data(wmr200 *wmr, uchar *data)
 {
-	/* BEGIN CSTYLED */
-	uint_t dir_flag		= LOW(data[7]);
-	float gust_speed	= (256 * LOW(data[10]) +      data[ 9])  / 10.0;
-	float avg_speed		= ( 16 * LOW(data[11]) + HIGH(data[10])) / 10.0;
-	float chill		= data[12]; /* (data[12] - 32) / 1.8; */
-	/* END CSTYLED */
+	uint_t dir_flag = LOW(data[7]);
+	float gust_speed = (256 * LOW(data[10]) + data[9]) / 10.0;
+	float avg_speed	= (16 * LOW(data[11]) + HIGH(data[10])) / 10.0;
+	float chill = data[12]; /* TODO verify the formula */
 
 	wmr_reading reading = {
 		.type = WMR_WIND,
 		.time = get_reading_time_from_packet(wmr),
 		.wind = {
-			.dir = WIND_DIRECTION[dir_flag],
+			.dir = WIND_DIR_STRING[dir_flag],
 			.gust_speed = gust_speed,
 			.avg_speed = avg_speed,
 			.chill = chill
@@ -200,16 +183,12 @@ process_wind_data(wmr200 *wmr, uchar *data)
 	invoke_handlers(wmr, &reading);
 }
 
-
-static void
-process_rain_data(wmr200 *wmr, uchar *data)
+static void process_rain_data(wmr200 *wmr, uchar *data)
 {
-	/* BEGIN CSTYLED */
-	float rate		= (256 * data[ 8] + data[ 7]) * 0.254;
-	float accum_hour	= (256 * data[10] + data[ 9]) * 0.254;
-	float accum_24h		= (256 * data[12] + data[11]) * 0.254;
-	float accum_2007 	= (256 * data[14] + data[13]) * 0.254;
-	/* END CSTYLED */
+	float rate = ((data[8] << 8) + data[7]) * TENTH_OF_INCH;
+	float accum_hour = ((data[10] << 8) + data[9]) * TENTH_OF_INCH;
+	float accum_24h	= ((data[12] << 8) + data[11]) * TENTH_OF_INCH;
+	float accum_2007 = ((data[14] << 8) + data[13]) * TENTH_OF_INCH;
 
 	wmr_reading reading = {
 		.type = WMR_RAIN,
@@ -226,9 +205,7 @@ process_rain_data(wmr200 *wmr, uchar *data)
 	invoke_handlers(wmr, &reading);
 }
 
-
-static void
-process_uvi_data(wmr200 *wmr, uchar *data)
+static void process_uvi_data(wmr200 *wmr, uchar *data)
 {
 	uint_t index = LOW(data[7]);
 
@@ -244,11 +221,9 @@ process_uvi_data(wmr200 *wmr, uchar *data)
 	invoke_handlers(wmr, &reading);
 }
 
-
-static void
-process_baro_data(wmr200 *wmr, uchar *data)
+static void process_baro_data(wmr200 *wmr, uchar *data)
 {
-	uint_t pressure		= 256 * LOW(data[8])  + data[7];
+	uint_t pressure		= 256 * LOW(data[8]) + data[7];
 	uint_t alt_pressure	= 256 * LOW(data[10]) + data[9];
 	uint_t forecast_flag	= HIGH(data[8]);
 
@@ -258,7 +233,7 @@ process_baro_data(wmr200 *wmr, uchar *data)
 		.baro = {
 			.pressure = pressure,
 			.alt_pressure = alt_pressure,
-			.forecast = FORECAST[forecast_flag]
+			.forecast = FORECAST_STRING[forecast_flag]
 		}
 	};
 
@@ -266,9 +241,7 @@ process_baro_data(wmr200 *wmr, uchar *data)
 	invoke_handlers(wmr, &reading);
 }
 
-
-static void
-process_temp_data(wmr200 *wmr, uchar *data)
+static void process_temp_data(wmr200 *wmr, uchar *data)
 {
 	int sensor_id = LOW(data[7]);
 
@@ -303,37 +276,35 @@ process_temp_data(wmr200 *wmr, uchar *data)
 	invoke_handlers(wmr, &reading);
 }
 
-
-static void
-process_status_data(wmr200 *wmr, uchar *data)
+static void process_status_data(wmr200 *wmr, uchar *data)
 {
-	uint_t wind_bat_flag		= NTH_BIT(0, data[4]);
-	uint_t temp_bat_flag		= NTH_BIT(1, data[4]);
-	uint_t rain_bat_flag		= NTH_BIT(4, data[5]);
-	uint_t uv_bat_flag		= NTH_BIT(5, data[5]);
+	uint_t wind_bat_flag = NTH_BIT(0, data[4]);
+	uint_t temp_bat_flag = NTH_BIT(1, data[4]);
+	uint_t rain_bat_flag = NTH_BIT(4, data[5]);
+	uint_t uv_bat_flag = NTH_BIT(5, data[5]);
 
-	uint_t wind_sensor_flag 	= NTH_BIT(0, data[2]);
-	uint_t temp_sensor_flag		= NTH_BIT(1, data[2]);
-	uint_t rain_sensor_flag		= NTH_BIT(4, data[3]);
-	uint_t uv_sensor_flag		= NTH_BIT(5, data[3]);
+	uint_t wind_sensor_flag = NTH_BIT(0, data[2]);
+	uint_t temp_sensor_flag = NTH_BIT(1, data[2]);
+	uint_t rain_sensor_flag = NTH_BIT(4, data[3]);
+	uint_t uv_sensor_flag = NTH_BIT(5, data[3]);
 
-	uint_t rtc_signal_flag		= NTH_BIT(8, data[4]);
+	uint_t rtc_signal_flag = NTH_BIT(8, data[4]);
 
 	wmr_reading reading = {
 		.type = WMR_STATUS,
 		.time = get_reading_time_from_packet(wmr),
 		.status = {
-			.wind_bat = LEVEL[wind_bat_flag],
-			.temp_bat = LEVEL[temp_bat_flag],
-			.rain_bat = LEVEL[rain_bat_flag],
-			.uv_bat = LEVEL[uv_bat_flag],
+			.wind_bat = LEVEL_STRING[wind_bat_flag],
+			.temp_bat = LEVEL_STRING[temp_bat_flag],
+			.rain_bat = LEVEL_STRING[rain_bat_flag],
+			.uv_bat = LEVEL_STRING[uv_bat_flag],
 
-			.wind_sensor = STATUS[wind_sensor_flag],
-			.temp_sensor = STATUS[temp_sensor_flag],
-			.rain_sensor = STATUS[rain_sensor_flag],
-			.uv_sensor = STATUS[uv_sensor_flag],
+			.wind_sensor = STATUS_STRING[wind_sensor_flag],
+			.temp_sensor = STATUS_STRING[temp_sensor_flag],
+			.rain_sensor = STATUS_STRING[rain_sensor_flag],
+			.uv_sensor = STATUS_STRING[uv_sensor_flag],
 
-			.rtc_signal_level = LEVEL[rtc_signal_flag]
+			.rtc_signal_level = LEVEL_STRING[rtc_signal_flag]
 		}
 	};
 
@@ -341,9 +312,7 @@ process_status_data(wmr200 *wmr, uchar *data)
 	invoke_handlers(wmr, &reading);
 }
 
-
-static void
-process_historic_data(wmr200 *wmr, uchar *data)
+static void process_historic_data(wmr200 *wmr, uchar *data)
 {
 	process_rain_data(wmr, data);
 	process_wind_data(wmr, data + 13);
@@ -363,9 +332,7 @@ process_historic_data(wmr200 *wmr, uchar *data)
 	}
 }
 
-
-static void
-emit_meta_packet(wmr200 *wmr)
+static void emit_meta_packet(wmr200 *wmr)
 {
 	log_debug("Emitting system META packet 0x%02X", WMR_META);
 
@@ -381,14 +348,11 @@ emit_meta_packet(wmr200 *wmr)
 	invoke_handlers(wmr, &reading);
 }
 
-
 /*
  * packet processing
  */
 
-
-static uint_t
-verify_packet(wmr200 *wmr)
+static uint_t verify_packet(wmr200 *wmr)
 {
 	if (wmr->packet_len <= 2) {
 		return (-1);
@@ -411,9 +375,7 @@ verify_packet(wmr200 *wmr)
 	return (0);
 }
 
-
-static void
-dispatch_packet(wmr200 *wmr)
+static void dispatch_packet(wmr200 *wmr)
 {
 	switch (wmr->packet_type) {
 	case HISTORIC_DATA:
@@ -449,9 +411,7 @@ dispatch_packet(wmr200 *wmr)
 	}
 }
 
-
-static void
-mainloop(wmr200 *wmr)
+static void mainloop(wmr200 *wmr)
 {
 	while (1) {
 		wmr->packet_type = read_byte(wmr);
@@ -509,9 +469,7 @@ act_on_packet_type:
 	}
 }
 
-
-void *
-mainloop_pthread(void *arg)
+void *mainloop_pthread(void *arg)
 {
 	wmr200 *wmr = (wmr200 *)arg;
 	mainloop(wmr); /* TODO register any cleanup handlers here? */
@@ -519,9 +477,7 @@ mainloop_pthread(void *arg)
 	return NULL;
 }
 
-
-static void
-heartbeat_loop(wmr200 *wmr)
+static void heartbeat_loop(wmr200 *wmr)
 {
 	for (;;) {
 		send_heartbeat(wmr);
@@ -531,9 +487,7 @@ heartbeat_loop(wmr200 *wmr)
 	}
 }
 
-
-static void *
-heartbeat_loop_pthread(void *arg)
+static void *heartbeat_loop_pthread(void *arg)
 {
 	wmr200 *wmr = (wmr200 *)arg;
 	heartbeat_loop(wmr);
@@ -541,14 +495,11 @@ heartbeat_loop_pthread(void *arg)
 	return NULL;
 }
 
-
 /*
  * public interface
  */
 
-
-wmr200 *
-wmr_open(void)
+wmr200 *wmr_open(void)
 {
 	wmr200 *wmr = malloc_safe(sizeof (wmr200));
 
@@ -580,9 +531,7 @@ wmr_open(void)
 	return (wmr);
 }
 
-
-void
-wmr_close(wmr200 *wmr)
+void wmr_close(wmr200 *wmr)
 {
 	if (wmr->dev != NULL) {
 		send_cmd_frame(wmr, COMMUNICATION_STOP);
@@ -592,23 +541,17 @@ wmr_close(wmr200 *wmr)
 	free(wmr);
 }
 
-
-void
-wmr_init(void)
+void wmr_init(void)
 {
 	hid_init();
 }
 
-
-void
-wmr_end(void)
+void wmr_end(void)
 {
 	hid_exit();
 }
 
-
-int
-wmr_start(wmr200 *wmr)
+int wmr_start(wmr200 *wmr)
 {
 	if (pthread_create(&wmr->heartbeat_thread,
 		NULL, heartbeat_loop_pthread, wmr) != 0) {
@@ -628,9 +571,7 @@ wmr_start(wmr200 *wmr)
 	return (0);
 }
 
-
-void
-wmr_stop(wmr200 *wmr)
+void wmr_stop(wmr200 *wmr)
 {
 	pthread_cancel(wmr->heartbeat_thread);
 	pthread_cancel(wmr->mainloop_thread);
@@ -639,9 +580,7 @@ wmr_stop(wmr200 *wmr)
 	pthread_join(wmr->mainloop_thread, NULL);
 }
 
-
-void
-wmr_add_handler(wmr200 *wmr, wmr_handler_t handler, void *arg)
+void wmr_add_handler(wmr200 *wmr, wmr_handler_t handler, void *arg)
 {
 	struct wmr_handler *wh = malloc_safe(sizeof (struct wmr_handler));
 	wh->handler = handler;
