@@ -1,7 +1,4 @@
 *~
 *.swp
 *.swo
-src/wmrd
-src/wmrq
 *.rrd
-www/tmp

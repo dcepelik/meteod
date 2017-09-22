@@ -10,9 +10,9 @@
 
 #include "daemon.h"
 #include "log.h"
-#include "loggers/rrd.h"
-#include "loggers/server.h"
-#include "loggers/yaml.h"
+#include "logger-rrd.h"
+#include "logger-server.h"
+#include "logger-yaml.h"
 #include "server.h"
 #include "wmr200.h"
 
@@ -93,6 +93,7 @@ main(int argc, char *argv[])
 
 		case 'S':
 			flag_start_server = 1;
+			break;
 			
 		case 'F':
 			if (strcmp(optarg, "-") == 0)
@@ -133,7 +134,7 @@ main(int argc, char *argv[])
 	sigaction(SIGTERM, &sa, NULL);
 	sigaction(SIGINT, &sa, NULL);
 
-	daemonize(argv0);
+	//daemonize(argv0);
 
 	while (1) {
 		pause(); /* wait here for a signal to arrive */

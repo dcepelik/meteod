@@ -9,7 +9,7 @@
  */
 
 
-#include "yaml.h"
+#include "logger-yaml.h"
 #include "wmrdata.h"
 
 #include <stdio.h>

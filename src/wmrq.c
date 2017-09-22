@@ -8,7 +8,7 @@
  * Copyright (c) 2015 David Čepelík <cepelik@gymlit.cz>
  */
 
-#include "loggers/yaml.h"
+#include "logger-yaml.h"
 #include "serialize.h"
 #include "wmr200.h"
 #include "wmrdata.h"

@@ -11,7 +11,7 @@
 
 #include "common.h"
 #include "log.h"
-#include "rrd.h"
+#include "logger-rrd.h"
 #include "strbuf.h"
 #include "wmrdata.h"
 
