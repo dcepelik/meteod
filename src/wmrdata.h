@@ -16,6 +16,10 @@
 
 
 enum packet_type {
+	HISTORIC_DATA_NOTIF = 0xD1,
+	HISTORIC_DATA = 0xD2,
+	ERASE_ACK = 0xDB,
+	STOP_ACK = 0xDF,
 	WMR_WIND = 0xD3,
 	WMR_RAIN = 0xD4,
 	WMR_UVI	 = 0xD5,

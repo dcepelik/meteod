@@ -28,15 +28,20 @@
 #define	PRODUCT_ID		0xCA01
 #define	TENTH_OF_INCH		0.0254
 
+/*
+ * The following HIST_* constants are offsets into the HISTORIC_DATA
+ * packets.
+ */
 #define HIST_WIND_OFFSET	13
 #define HIST_UVI_OFFSET		20
 #define HIST_BARO_OFFSET	21
-#define HIST_TEMP_OFFSET	26
-#define HIST_SENSORS_OFFSET	33
-#define HIST_SENSOR_LEN		7
+#define HIST_TEMP_OFFSET	26	/* offset to console readings */
+#define HIST_SENSORS_OFFSET	33	/* offset to external sensors data */
+#define HIST_SENSOR_LEN		7	/* single external reading length */
 
 /*
- * Some kind of a wake-up command.
+ * Some kind of a wake-up command. The device won't talk to us unless
+ * we write this first.
  */
 static uchar wakeup[8] = { 0x20, 0x00, 0x08, 0x01, 0x00, 0x00, 0x00, 0x00 };
 
@@ -45,12 +50,10 @@ static uchar wakeup[8] = { 0x20, 0x00, 0x08, 0x01, 0x00, 0x00, 0x00, 0x00 };
  */
 enum command
 {
-	HEARTBEAT = 0xD0,		/* I'm alive, keep sending data */
-	HISTORIC_DATA_NOTIF = 0xD1,	/* ? */
-	HISTORIC_DATA = 0xD2,		/* ? */
-	REQUEST_HISTORIC_DATA = 0xDA,	/* send me next record from internal logger */
-	LOGGER_DATA_ERASE = 0xDB,	/* erase internal logger data */
-	COMMUNICATION_STOP = 0xDF	/* end of communication */
+	CMD_HEARTBEAT = 0xD0,		/* I'm alive, keep sending data */
+	CMD_REQUEST_HISTDATA = 0xDA,	/* send me next record from internal logger */
+	CMD_ERASE_LOGGER = 0xDB,	/* erase internal logger data */
+	CMD_STOP = 0xDF			/* terminate commmunication */
 };
 
 /*
@@ -157,7 +160,7 @@ static void send_cmd(wmr200 *wmr, uchar cmd)
 static void send_heartbeat(wmr200 *wmr)
 {
 	log_debug("Sending heartbeat to WMR200");
-	send_cmd(wmr, HEARTBEAT);
+	send_cmd(wmr, CMD_HEARTBEAT);
 }
 
 /*
@@ -443,18 +446,18 @@ handle_packet:
 		case HISTORIC_DATA_NOTIF:
 			log_info("Data logger contains some unprocessed "
 				"historic records");
-			log_info("Issuing REQUEST_HISTORIC_DATA command");
+			log_info("Issuing CMD_REQUEST_HISTDATA command");
 
-			send_cmd(wmr, REQUEST_HISTORIC_DATA);
+			send_cmd(wmr, CMD_REQUEST_HISTDATA);
 			continue;
 
-		case LOGGER_DATA_ERASE:
+		case ERASE_ACK:
 			log_info("Data logger database purge successful");
 			continue;
 
-		case COMMUNICATION_STOP:
-			/* ignore, response to prev COMMUNICATION_STOP packet */
-			log_debug("Ignoring COMMUNICATION_STOP packet");
+		case STOP_ACK:
+			/* ignore, response to prev CMD_STOP packet */
+			log_debug("Ignoring CMD_STOP packet");
 			break;
 		}
 
@@ -566,7 +569,7 @@ out_free:
 void wmr_close(wmr200 *wmr)
 {
 	if (wmr->dev != NULL) {
-		send_cmd(wmr, COMMUNICATION_STOP);
+		send_cmd(wmr, CMD_STOP);
 		hid_close(wmr->dev);
 	}
 
@@ -601,7 +604,7 @@ int wmr_start(wmr200 *wmr)
 
 	log_debug("Started main thread");
 
-	send_cmd(wmr, LOGGER_DATA_ERASE);
+	send_cmd(wmr, CMD_ERASE_LOGGER);
 	return 0;
 }
 
