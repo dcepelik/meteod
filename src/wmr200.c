@@ -17,7 +17,6 @@
 #include <time.h>
 #include <unistd.h>
 
-
 #define	NTH_BIT(n, val)		(((val) >> (n)) & 0x01)
 #define	LOW(b)			((b) & 0x0F)
 #define	HIGH(b)			((b) & 0xF0)
@@ -29,11 +28,17 @@
 #define	PRODUCT_ID		0xCA01
 #define	TENTH_OF_INCH		0.0254
 
+#define HIST_WIND_OFFSET	13
+#define HIST_UVI_OFFSET		20
+#define HIST_BARO_OFFSET	21
+#define HIST_TEMP_OFFSET	26
+#define HIST_SENSORS_OFFSET	33
+#define HIST_SENSOR_LEN		7
+
 /*
  * Some kind of a wake-up command.
  */
 static uchar wakeup[8] = { 0x20, 0x00, 0x08, 0x01, 0x00, 0x00, 0x00, 0x00 };
-
 
 /*
  * A command to be sent to the station.
@@ -254,7 +259,7 @@ static void process_baro_data(wmr200 *wmr, uchar *data)
 {
 	uint_t pressure = 256 * LOW(data[8]) + data[7];
 	uint_t alt_pressure = 256 * LOW(data[10]) + data[9];
-	uint_t forecast_flag = HIGH(data[8]);
+	uint_t forecast = HIGH(data[8]);
 
 	wmr_reading reading = {
 		.type = WMR_BARO,
@@ -262,7 +267,7 @@ static void process_baro_data(wmr200 *wmr, uchar *data)
 		.baro = {
 			.pressure = pressure,
 			.alt_pressure = alt_pressure,
-			.forecast = forecast_string[forecast_flag]
+			.forecast = forecast_string[forecast]
 		}
 	};
 
@@ -309,33 +314,33 @@ static void process_temp_data(wmr200 *wmr, uchar *data)
 
 static void process_status_data(wmr200 *wmr, uchar *data)
 {
-	uint_t wind_bat_flag = NTH_BIT(0, data[4]);
-	uint_t temp_bat_flag = NTH_BIT(1, data[4]);
-	uint_t rain_bat_flag = NTH_BIT(4, data[5]);
-	uint_t uv_bat_flag = NTH_BIT(5, data[5]);
+	uint_t wind_bat = NTH_BIT(0, data[4]);
+	uint_t temp_bat = NTH_BIT(1, data[4]);
+	uint_t rain_bat = NTH_BIT(4, data[5]);
+	uint_t uv_bat = NTH_BIT(5, data[5]);
 
-	uint_t wind_sensor_flag = NTH_BIT(0, data[2]);
-	uint_t temp_sensor_flag = NTH_BIT(1, data[2]);
-	uint_t rain_sensor_flag = NTH_BIT(4, data[3]);
-	uint_t uv_sensor_flag = NTH_BIT(5, data[3]);
+	uint_t wind_status = NTH_BIT(0, data[2]);
+	uint_t temp_status = NTH_BIT(1, data[2]);
+	uint_t rain_status = NTH_BIT(4, data[3]);
+	uint_t uv_status = NTH_BIT(5, data[3]);
 
-	uint_t rtc_signal_flag = NTH_BIT(8, data[4]);
+	uint_t rtc_signal = NTH_BIT(8, data[4]);
 
 	wmr_reading reading = {
 		.type = WMR_STATUS,
 		.time = get_reading_time_from_packet(wmr),
 		.status = {
-			.wind_bat = level_string[wind_bat_flag],
-			.temp_bat = level_string[temp_bat_flag],
-			.rain_bat = level_string[rain_bat_flag],
-			.uv_bat = level_string[uv_bat_flag],
+			.wind_bat = level_string[wind_bat],
+			.temp_bat = level_string[temp_bat],
+			.rain_bat = level_string[rain_bat],
+			.uv_bat = level_string[uv_bat],
 
-			.wind_sensor = status_string[wind_sensor_flag],
-			.temp_sensor = status_string[temp_sensor_flag],
-			.rain_sensor = status_string[rain_sensor_flag],
-			.uv_sensor = status_string[uv_sensor_flag],
+			.wind_sensor = status_string[wind_status],
+			.temp_sensor = status_string[temp_status],
+			.rain_sensor = status_string[rain_status],
+			.uv_sensor = status_string[uv_status],
 
-			.rtc_signal_level = level_string[rtc_signal_flag]
+			.rtc_signal_level = level_string[rtc_signal]
 		}
 	};
 
@@ -345,22 +350,18 @@ static void process_status_data(wmr200 *wmr, uchar *data)
 
 static void process_historic_data(wmr200 *wmr, uchar *data)
 {
+	size_t num_ext_sensors;
+	size_t i;
+
 	process_rain_data(wmr, data);
-	process_wind_data(wmr, data + 13);
-	process_uvi_data(wmr, data + 20);
-	process_baro_data(wmr, data + 21);
-	process_temp_data(wmr, data + 26);
+	process_wind_data(wmr, data + HIST_WIND_OFFSET);
+	process_uvi_data(wmr, data + HIST_UVI_OFFSET);
+	process_baro_data(wmr, data + HIST_BARO_OFFSET);
+	process_temp_data(wmr, data + HIST_TEMP_OFFSET);
 
-	uint_t ext_sensor_count = data[32];
-	if (ext_sensor_count > WMR200_MAX_TEMP_SENSORS) {
-		log_warning("process_historic_data: too many external sensors (%lu), "
-			"skipping extraneous sensors", WMR200_MAX_TEMP_SENSORS);
-	}
-	ext_sensor_count = MIN(ext_sensor_count, WMR200_MAX_TEMP_SENSORS);
-
-	for (uint_t i = 0; i < ext_sensor_count; i++) {
-		process_temp_data(wmr, data + 33 + (7 * i));
-	}
+	num_ext_sensors = data[32];
+	for (i = 0; i < num_ext_sensors; i++)
+		process_temp_data(wmr, data + HIST_SENSORS_OFFSET + 7 * HIST_SENSOR_LEN);
 }
 
 static void emit_meta_packet(wmr200 *wmr)
