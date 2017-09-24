@@ -9,6 +9,7 @@
 #include "wmr200.h"
 #include "wmrdata.h"
 
+#include <assert.h>
 #include <hidapi.h>
 #include <pthread.h>
 #include <stdbool.h>
@@ -21,8 +22,24 @@
 #define	LOW(b)			((b) & 0x0F)
 #define	HIGH(b)			((b) & 0xF0)
 
-#define	HEARTBEAT_INTERVAL_SEC	30
-#define MAX_PACKET_SIZE		1024
+/*
+ * Although heartbeat is required every 30 seconds, using a little
+ * less is reasonable. Otherwise the station will (often) switch to
+ * logging mode and data which would otherwise be sent immediately
+ * will be received as historic records.
+ */
+#define	HEARTBEAT_INTERVAL_SEC	25
+
+/*
+ * Although packet length is validated for each reading as it is
+ * processed, packet length is checked against MAX_PACKET_LEN before
+ * memory is allocated for the packet.
+ *
+ * 112 bytes is the maximum length of HISTORIC_DATA reading, which
+ * is the length of the largest well-formed packet the station will
+ * send with all external sensors attached.
+ */
+#define MAX_PACKET_LEN		112
 
 #define	VENDOR_ID		0x0FDE
 #define	PRODUCT_ID		0xCA01
@@ -30,20 +47,45 @@
 
 /*
  * The following HIST_* constants are offsets into the HISTORIC_DATA
- * packets.
+ * packets. Although offsets are generally hardcoded in the packet
+ * processing logic, they are introduced as constants fo HISTORIC_DATA
+ * packets, as it makes the code easier to understand.
  */
-#define HIST_WIND_OFFSET	13
-#define HIST_UVI_OFFSET		20
-#define HIST_BARO_OFFSET	21
-#define HIST_TEMP_OFFSET	26	/* console readings offset */
+#define HIST_RAIN_OFFSET	7
+#define HIST_WIND_OFFSET	20
+#define HIST_UVI_OFFSET		27
+#define HIST_BARO_OFFSET	28
+#define HIST_NUM_EXT_OFFSET	32	/* offset of the number of external sensors */
 #define HIST_SENSORS_OFFSET	33	/* external sensors data offset */
-#define HIST_SENSOR_LEN		7	/* external sensor reading length */
+#define HIST_SENSOR_LEN		7	/* external sensor reading length in HISTORIC_DATA*/
+
+/*
+ * WMR200 connection and communication context.
+ */
+struct wmr200
+{
+	hid_device *dev;		/* HIDAPI device handle */
+	struct wmr_handler *handler;	/* loggers TODO */
+	pthread_t mainloop_thread;	/* main loop thread */
+	pthread_t heartbeat_thread;	/* heartbeat loop thread */
+	wmr_latest_data latest;		/* latest readings */
+	wmr_meta meta;			/* system metadata packet (updated on the fly) */
+	time_t conn_since;		/* time the connection was established */
+
+	byte_t buf[WMR200_FRAME_SIZE];	/* RX buffer */
+	size_t buf_avail;		/* number of bytes available in the buffer */
+	size_t buf_pos;			/* read position within the buffer */
+
+	byte_t *packet;			/* current packet */
+	size_t packet_len;		/* length of the packet */
+	byte_t packet_type;		/* type of the packet */
+};
 
 /*
  * Some kind of a wake-up command. The device won't talk to us unless
- * we write this first.
+ * we send this first. I don't know why.
  */
-static uchar wakeup[8] = { 0x20, 0x00, 0x08, 0x01, 0x00, 0x00, 0x00, 0x00 };
+static byte_t wakeup[8] = { 0x20, 0x00, 0x08, 0x01, 0x00, 0x00, 0x00, 0x00 };
 
 /*
  * A command to be sent to the station.
@@ -52,7 +94,7 @@ enum command
 {
 	CMD_HEARTBEAT = 0xD0,		/* I'm alive, keep sending data */
 	CMD_REQUEST_HISTDATA = 0xDA,	/* send me next record from internal logger */
-	CMD_ERASE_LOGGER = 0xDB,	/* erase internal logger data */
+	CMD_ERASE = 0xDB,	/* erase internal logger data */
 	CMD_STOP = 0xDF			/* terminate commmunication */
 };
 
@@ -124,16 +166,17 @@ static const char *wind_dir_string[] = {
 	"NNW"
 };
 
-static uchar read_byte(struct wmr200 *wmr)
+static byte_t read_byte(struct wmr200 *wmr)
 {
-	int ret;
+	ssize_t ret;
 
 	if (wmr->buf_avail == 0) {
 again:
 		ret = hid_read(wmr->dev, wmr->buf, WMR200_FRAME_SIZE);
-		if (ret != WMR200_FRAME_SIZE) {
-			log_warning("hid_read: short read\n");
-			goto again; /* TODO really? */
+		if (ret < 0) {
+			log_warning("hid_read: read error\n");
+			goto again;
+			/* TODO teardown instead */
 		}
 
 		wmr->meta.num_frames++;
@@ -146,14 +189,15 @@ again:
 	return wmr->buf[wmr->buf_pos++];
 }
 
-static void send_cmd(struct wmr200 *wmr, uchar cmd)
+static void send_cmd(struct wmr200 *wmr, byte_t cmd)
 {
-	uchar data[2] = { 0x01, cmd };
+	byte_t data[2] = { 0x01, cmd };
 	int ret = hid_write(wmr->dev, data, sizeof(data));
 
 	if (ret != sizeof(data)) {
 		fprintf(stderr, "hid_write: cannot write command\n");
 		exit(1);
+		/* TODO teardown instead */
 	}
 }
 
@@ -169,7 +213,7 @@ static void send_heartbeat(struct wmr200 *wmr)
 
 static time_t get_reading_time_from_packet(struct wmr200 *wmr)
 {
-	struct tm time = {
+	struct tm tm = {
 		.tm_year	= (2000 + wmr->packet[6]) - 1900,
 		.tm_mon		= wmr->packet[5],
 		.tm_mday	= wmr->packet[4],
@@ -179,7 +223,7 @@ static time_t get_reading_time_from_packet(struct wmr200 *wmr)
 		.tm_isdst	= -1
 	};
 
-	return mktime(&time);
+	return mktime(&tm);
 }
 
 static void invoke_handlers(struct wmr200 *wmr, wmr_reading *reading)
@@ -198,12 +242,16 @@ static void update_if_newer(wmr_reading *old, wmr_reading *new)
 		*old = *new;
 }
 
-static void process_wind_data(struct wmr200 *wmr, uchar *data)
+static void process_wind_data(struct wmr200 *wmr, byte_t *data)
 {
-	uint_t dir_flag = LOW(data[7]);
+	assert(wmr->packet_len == 16);
+
+	byte_t dir_flag = LOW(data[7]);
 	float gust_speed = (256 * LOW(data[10]) + data[9]) / 10.0;
 	float avg_speed	= (16 * LOW(data[11]) + HIGH(data[10])) / 10.0;
 	float chill = data[12]; /* TODO verify the formula */
+
+	assert(dir_flag < ARRAY_SIZE(wind_dir_string));
 
 	wmr_reading reading = {
 		.type = WMR_WIND,
@@ -220,8 +268,10 @@ static void process_wind_data(struct wmr200 *wmr, uchar *data)
 	invoke_handlers(wmr, &reading);
 }
 
-static void process_rain_data(struct wmr200 *wmr, uchar *data)
+static void process_rain_data(struct wmr200 *wmr, byte_t *data)
 {
+	assert(wmr->packet_len == 22);
+
 	float rate = ((data[8] << 8) + data[7]) * TENTH_OF_INCH;
 	float accum_hour = ((data[10] << 8) + data[9]) * TENTH_OF_INCH;
 	float accum_24h	= ((data[12] << 8) + data[11]) * TENTH_OF_INCH;
@@ -242,9 +292,11 @@ static void process_rain_data(struct wmr200 *wmr, uchar *data)
 	invoke_handlers(wmr, &reading);
 }
 
-static void process_uvi_data(struct wmr200 *wmr, uchar *data)
+static void process_uvi_data(struct wmr200 *wmr, byte_t *data)
 {
-	uint_t index = LOW(data[7]);
+	assert(wmr->packet_len == 10);
+
+	byte_t index = LOW(data[7]);
 
 	wmr_reading reading = {
 		.type = WMR_UVI,
@@ -258,11 +310,15 @@ static void process_uvi_data(struct wmr200 *wmr, uchar *data)
 	invoke_handlers(wmr, &reading);
 }
 
-static void process_baro_data(struct wmr200 *wmr, uchar *data)
+static void process_baro_data(struct wmr200 *wmr, byte_t *data)
 {
+	assert(wmr->packet_len == 13);
+
 	uint_t pressure = 256 * LOW(data[8]) + data[7];
 	uint_t alt_pressure = 256 * LOW(data[10]) + data[9];
-	uint_t forecast = HIGH(data[8]);
+	byte_t forecast = HIGH(data[8]);
+
+	assert(forecast < ARRAY_SIZE(forecast_string));
 
 	wmr_reading reading = {
 		.type = WMR_BARO,
@@ -278,18 +334,21 @@ static void process_baro_data(struct wmr200 *wmr, uchar *data)
 	invoke_handlers(wmr, &reading);
 }
 
-static void process_temp_data(struct wmr200 *wmr, uchar *data)
+static void process_temp_data(struct wmr200 *wmr, byte_t *data)
 {
+	assert(wmr->packet_len == 16);
+
 	int sensor_id = LOW(data[7]);
 
 	/* TODO */
 	if (sensor_id > 1) {
 		fprintf(stderr, "Unknown sensor, ID: %i\n", sensor_id);
 		exit(1);
+		/* teardown instead */
 	}
 
-	uint_t humidity = data[10];
-	uint_t heat_index = data[13];
+	byte_t humidity = data[10];
+	byte_t heat_index = data[13];
 
 	float temp = (256 * LOW(data[9]) + data[8]) / 10.0;
 	if (HIGH(data[9]) == SIGN_NEGATIVE)
@@ -315,19 +374,21 @@ static void process_temp_data(struct wmr200 *wmr, uchar *data)
 	invoke_handlers(wmr, &reading);
 }
 
-static void process_status_data(struct wmr200 *wmr, uchar *data)
+static void process_status_data(struct wmr200 *wmr, byte_t *data)
 {
-	uint_t wind_bat = NTH_BIT(0, data[4]);
-	uint_t temp_bat = NTH_BIT(1, data[4]);
-	uint_t rain_bat = NTH_BIT(4, data[5]);
-	uint_t uv_bat = NTH_BIT(5, data[5]);
+	assert(wmr->packet_len == 8);
 
-	uint_t wind_status = NTH_BIT(0, data[2]);
-	uint_t temp_status = NTH_BIT(1, data[2]);
-	uint_t rain_status = NTH_BIT(4, data[3]);
-	uint_t uv_status = NTH_BIT(5, data[3]);
+	byte_t wind_bat = NTH_BIT(0, data[4]);
+	byte_t temp_bat = NTH_BIT(1, data[4]);
+	byte_t rain_bat = NTH_BIT(4, data[5]);
+	byte_t uv_bat = NTH_BIT(5, data[5]);
 
-	uint_t rtc_signal = NTH_BIT(8, data[4]);
+	byte_t wind_status = NTH_BIT(0, data[2]);
+	byte_t temp_status = NTH_BIT(1, data[2]);
+	byte_t rain_status = NTH_BIT(4, data[3]);
+	byte_t uv_status = NTH_BIT(5, data[3]);
+
+	byte_t rtc_signal = NTH_BIT(8, data[4]);
 
 	wmr_reading reading = {
 		.type = WMR_STATUS,
@@ -337,12 +398,10 @@ static void process_status_data(struct wmr200 *wmr, uchar *data)
 			.temp_bat = level_string[temp_bat],
 			.rain_bat = level_string[rain_bat],
 			.uv_bat = level_string[uv_bat],
-
 			.wind_sensor = status_string[wind_status],
 			.temp_sensor = status_string[temp_status],
 			.rain_sensor = status_string[rain_status],
 			.uv_sensor = status_string[uv_status],
-
 			.rtc_signal_level = level_string[rtc_signal]
 		}
 	};
@@ -351,25 +410,28 @@ static void process_status_data(struct wmr200 *wmr, uchar *data)
 	invoke_handlers(wmr, &reading);
 }
 
-static void process_historic_data(struct wmr200 *wmr, uchar *data)
+static void process_historic_data(struct wmr200 *wmr, byte_t *data)
 {
 	size_t num_ext_sensors;
 	size_t i;
 
-	process_rain_data(wmr, data);
+	assert(wmr->packet_len >= HIST_NUM_EXT_OFFSET);
+	num_ext_sensors = data[HIST_NUM_EXT_OFFSET];
+
+	assert(wmr->packet_len == HIST_SENSORS_OFFSET + (1 + num_ext_sensors) * HIST_SENSOR_LEN + 2);
+
+	process_rain_data(wmr, data +  HIST_RAIN_OFFSET);
 	process_wind_data(wmr, data + HIST_WIND_OFFSET);
 	process_uvi_data(wmr, data + HIST_UVI_OFFSET);
 	process_baro_data(wmr, data + HIST_BARO_OFFSET);
-	process_temp_data(wmr, data + HIST_TEMP_OFFSET);
 
-	num_ext_sensors = data[32];
 	for (i = 0; i < num_ext_sensors; i++)
-		process_temp_data(wmr, data + HIST_SENSORS_OFFSET + 7 * HIST_SENSOR_LEN);
+		process_temp_data(wmr, data + HIST_SENSORS_OFFSET + i * HIST_SENSOR_LEN);
 }
 
 static void emit_meta_packet(struct wmr200 *wmr)
 {
-	log_debug("Emitting system META packet 0x%02X", WMR_META);
+	log_debug("Emitting system WMR_META packet");
 
 	wmr->meta.uptime = time(NULL) - wmr->conn_since;
 	wmr_reading reading = {
@@ -399,8 +461,6 @@ static bool verify_packet(struct wmr200 *wmr)
 
 	if (sum != checksum)
 		return false;
-
-	/* TODO verify packet_len */
 
 	return true;
 }
@@ -443,7 +503,7 @@ static void mainloop(struct wmr200 *wmr)
 
 handle_packet:
 		switch (wmr->packet_type) {
-		case HISTORIC_DATA_NOTIF:
+		case PACKET_HISTDATA_NOTIF:
 			log_info("Data logger contains some unprocessed "
 				"historic records");
 			log_info("Issuing CMD_REQUEST_HISTDATA command");
@@ -451,17 +511,21 @@ handle_packet:
 			send_cmd(wmr, CMD_REQUEST_HISTDATA);
 			continue;
 
-		case ERASE_ACK:
+		case PACKET_ERASE_ACK:
 			log_info("Data logger database purge successful");
 			continue;
 
-		case STOP_ACK:
+		case PACKET_STOP_ACK:
 			/* ignore, response to prev CMD_STOP packet */
 			log_debug("Ignoring CMD_STOP packet");
 			break;
 		}
 
 		wmr->packet_len = read_byte(wmr);
+
+		log_debug("Received %s (type=0x%02X, len=%zu)",
+			packet_type_to_string(wmr->packet_type), wmr->packet_type,
+			wmr->packet_len);
 
 		/*
 		 * When communication gets out of sync, we may read a packet length
@@ -476,7 +540,7 @@ handle_packet:
 		/*
 		 * If a packet exceeds maximum size, drop it.
 		 */
-		if (wmr->packet_len > MAX_PACKET_SIZE) {
+		if (wmr->packet_len > MAX_PACKET_LEN) {
 			log_warning("Dropping oversize packet (%zu B)", wmr->packet_len);
 			for (i = 0; i < wmr->packet_len; i++)
 				(void) read_byte(wmr);
@@ -496,8 +560,6 @@ handle_packet:
 			wmr->meta.num_failed++;
 			goto free_packet;
 		}
-
-		log_debug("Packet 0x%02X (%zu bytes)", wmr->packet_type, wmr->packet_len);
 
 		wmr->meta.latest_packet = time(NULL);
 		dispatch_packet(wmr);
@@ -604,7 +666,7 @@ int wmr_start(struct wmr200 *wmr)
 
 	log_debug("Started main thread");
 
-	send_cmd(wmr, CMD_ERASE_LOGGER);
+	send_cmd(wmr, CMD_ERASE);
 	return 0;
 }
 

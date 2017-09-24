@@ -16,19 +16,23 @@
 
 
 enum packet_type {
-	HISTORIC_DATA_NOTIF = 0xD1,
+	PACKET_ERASE_ACK= 0xDB,		/* data erase successful (after CMD_ERASE) */
+	PACKET_HISTDATA_NOTIF = 0xD1,	/* historic data available notification */
+	PACKET_STOP_ACK = 0xDF,		/* communication will stop (after CMD_STOP) */
+
 	HISTORIC_DATA = 0xD2,
-	ERASE_ACK = 0xDB,
-	STOP_ACK = 0xDF,
 	WMR_WIND = 0xD3,
 	WMR_RAIN = 0xD4,
 	WMR_UVI	 = 0xD5,
 	WMR_BARO = 0xD6,
 	WMR_TEMP = 0xD7,
 	WMR_STATUS = 0xD9,
-	WMR_META = 0xFF		/* system meta-packet */
+	WMR_META = 0xFF,		/* system meta-packet */
+
+	PACKET_TYPE_MAX
 };
 
+const char *packet_type_to_string(enum packet_type type);
 
 typedef struct {
 	const char *dir;	/* wind direction, see `struct wmr200.c' */

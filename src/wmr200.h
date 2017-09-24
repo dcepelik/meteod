@@ -26,27 +26,6 @@ typedef void (*wmr_handler_t)(wmr_reading *reading, void *arg);
 
 struct wmr_handler;
 
-struct wmr200
-{ /* move to .c */
-	hid_device *dev;		/* HIDAPI device handle */
-	pthread_t mainloop_thread;	/* main loop thread id */
-	pthread_t heartbeat_thread;	/* heartbeat loop thread id */
-	struct wmr_handler *handler;	/* handlers of "reading ready" event */
-	wmr_latest_data latest;		/* latest readings of all kinds */
-	wmr_meta meta;			/* system meta-packet being made */
-	time_t conn_since;		/* time the connection was started */
-
-	/* receive buffer */
-	uchar buf[WMR200_FRAME_SIZE];
-	uint_t buf_avail;
-	uint_t buf_pos;
-
-	/* packet being processed */
-	uchar *packet;
-	uchar packet_type;
-	uint_t packet_len;
-};
-
 void wmr_init();
 void wmr_end();
 struct wmr200 *wmr_open();

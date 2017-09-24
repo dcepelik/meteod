@@ -47,3 +47,35 @@ wmr_sensor_name(wmr_reading *reading)
 
 	return NULL;
 }
+
+const char *packet_type_to_string(enum packet_type type)
+{
+	switch (type) {
+	case PACKET_ERASE_ACK:
+		return "PACKET_ERASE_ACK";
+	case PACKET_HISTDATA_NOTIF:
+		return "PACKET_HISTDATA_NOTIF";
+	case PACKET_STOP_ACK:
+		return "PACKET_STOP_ACK";
+	case HISTORIC_DATA:
+		return "HISTORIC_DATA";
+	case WMR_WIND:
+		return "WMR_WIND";
+	case WMR_RAIN:
+		return "WMR_RAIN";
+	case WMR_UVI:
+		return "WMR_UVI";
+	case WMR_BARO:
+		return "WMR_BARO";
+	case WMR_TEMP:
+		return "WMR_TEMP";
+	case WMR_STATUS:
+		return "WMR_STATUS";
+	case WMR_META:
+		return "WMR_META";
+	case PACKET_TYPE_MAX:
+		break;
+	}
+
+	return NULL;
+}

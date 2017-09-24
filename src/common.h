@@ -18,6 +18,7 @@
 
 #define	MAX(a, b)		((a) > (b) ? (a) : (b))
 #define	MIN(a, b)		((a) < (b) ? (a) : (b))
+#define ARRAY_SIZE(arr)		(sizeof(arr) / sizeof(*arr))
 
 
 #ifndef DEBUG
@@ -30,7 +31,7 @@
 } while (0);
 
 
-typedef unsigned char		uchar;
+typedef unsigned char		byte_t;
 typedef uint32_t		uint_t;
 typedef uint64_t		ulong_t;
 

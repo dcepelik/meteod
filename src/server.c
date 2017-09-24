@@ -52,7 +52,8 @@ mainloop(wmr_server *srv)
 		struct byte_array data;
 		byte_array_init(&data);
 
-		serialize_data(&data, &srv->wmr->latest);
+		/* TODO */
+		//serialize_data(&data, &srv->wmr->latest);
 
 		while (write(fd, data.elems, data.size) >= 0);
 
