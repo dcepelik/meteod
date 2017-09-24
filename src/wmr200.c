@@ -88,6 +88,23 @@ struct wmr200
 static byte_t wakeup[8] = { 0x20, 0x00, 0x08, 0x01, 0x00, 0x00, 0x00, 0x00 };
 
 /*
+ * Packet lengths for certain packet types. If a nonzero value is
+ * present for a given packet type, verify_packet will check that
+ * packets of that type have the correct length.
+ *
+ * Length of HISTORIC_DATA packet has to be checked differently, as it
+ * depends on the information present in the packet (external sensor count).
+ */
+static size_t packet_len[PACKET_TYPE_MAX] = {
+	[WMR_WIND] = 16,
+	[WMR_RAIN] = 22,
+	[WMR_UVI] = 10,
+	[WMR_BARO] = 13,
+	[WMR_TEMP] = 16,
+	[WMR_STATUS] = 8,
+};
+
+/*
  * A command to be sent to the station.
  */
 enum command
@@ -244,8 +261,6 @@ static void update_if_newer(wmr_reading *old, wmr_reading *new)
 
 static void process_wind_data(struct wmr200 *wmr, byte_t *data)
 {
-	assert(wmr->packet_len == 16);
-
 	byte_t dir_flag = LOW(data[7]);
 	float gust_speed = (256 * LOW(data[10]) + data[9]) / 10.0;
 	float avg_speed	= (16 * LOW(data[11]) + HIGH(data[10])) / 10.0;
@@ -270,8 +285,6 @@ static void process_wind_data(struct wmr200 *wmr, byte_t *data)
 
 static void process_rain_data(struct wmr200 *wmr, byte_t *data)
 {
-	assert(wmr->packet_len == 22);
-
 	float rate = ((data[8] << 8) + data[7]) * TENTH_OF_INCH;
 	float accum_hour = ((data[10] << 8) + data[9]) * TENTH_OF_INCH;
 	float accum_24h	= ((data[12] << 8) + data[11]) * TENTH_OF_INCH;
@@ -294,8 +307,6 @@ static void process_rain_data(struct wmr200 *wmr, byte_t *data)
 
 static void process_uvi_data(struct wmr200 *wmr, byte_t *data)
 {
-	assert(wmr->packet_len == 10);
-
 	byte_t index = LOW(data[7]);
 
 	wmr_reading reading = {
@@ -312,8 +323,6 @@ static void process_uvi_data(struct wmr200 *wmr, byte_t *data)
 
 static void process_baro_data(struct wmr200 *wmr, byte_t *data)
 {
-	assert(wmr->packet_len == 13);
-
 	uint_t pressure = 256 * LOW(data[8]) + data[7];
 	uint_t alt_pressure = 256 * LOW(data[10]) + data[9];
 	byte_t forecast = HIGH(data[8]);
@@ -336,8 +345,6 @@ static void process_baro_data(struct wmr200 *wmr, byte_t *data)
 
 static void process_temp_data(struct wmr200 *wmr, byte_t *data)
 {
-	assert(wmr->packet_len == 16);
-
 	int sensor_id = LOW(data[7]);
 
 	/* TODO */
@@ -376,8 +383,6 @@ static void process_temp_data(struct wmr200 *wmr, byte_t *data)
 
 static void process_status_data(struct wmr200 *wmr, byte_t *data)
 {
-	assert(wmr->packet_len == 8);
-
 	byte_t wind_bat = NTH_BIT(0, data[4]);
 	byte_t temp_bat = NTH_BIT(1, data[4]);
 	byte_t rain_bat = NTH_BIT(4, data[5]);
@@ -410,15 +415,26 @@ static void process_status_data(struct wmr200 *wmr, byte_t *data)
 	invoke_handlers(wmr, &reading);
 }
 
+/*
+ * Process HISTORIC_DATA packet data.
+ *
+ * The processing of this packet is a bit special. Normally, each reading contains
+ * date and time information and individual checksum. With HISTORIC_DATA packets,
+ * however, all readings are sent as a single HISTORIC_DATA packet with common
+ * date/time and checksum.
+ *
+ * To reuse the logic used for processing of readings when sent individually
+ * for HISTORIC_DATA processing, the packet data pointer is moved to point
+ * into the appropriate places in the HISTORIC_DATA packet. Note that when
+ * reading handlers such as process_temp_data extract reading date and time
+ * information, they use wmr->packet as argument to get_reading_time_from_packet.
+ */
 static void process_historic_data(struct wmr200 *wmr, byte_t *data)
 {
 	size_t num_ext_sensors;
 	size_t i;
 
-	assert(wmr->packet_len >= HIST_NUM_EXT_OFFSET);
 	num_ext_sensors = data[HIST_NUM_EXT_OFFSET];
-
-	assert(wmr->packet_len == HIST_SENSORS_OFFSET + (1 + num_ext_sensors) * HIST_SENSOR_LEN + 2);
 
 	process_rain_data(wmr, data +  HIST_RAIN_OFFSET);
 	process_wind_data(wmr, data + HIST_WIND_OFFSET);
@@ -448,6 +464,7 @@ static bool verify_packet(struct wmr200 *wmr)
 {
 	uint_t sum;
 	uint_t checksum;
+	size_t num_ext_sensors;
 	size_t i;
 
 	if (wmr->packet_len <= 2)
@@ -461,6 +478,28 @@ static bool verify_packet(struct wmr200 *wmr)
 
 	if (sum != checksum)
 		return false;
+
+	/*
+	 * Validate packet length so that packet processing logic
+	 * does not read invalid memory.
+	 */
+	if (packet_len[wmr->packet_type] > 0) {
+		if (wmr->packet_len != packet_len[wmr->packet_type]) {
+			log_error("Invalid %s packet length (%zu), dropping",
+				packet_type_to_string(wmr->packet_type), wmr->packet_len);
+			/* TODO teardown */
+		}
+	}
+
+	/*
+	 * Validate length of HISTORIC_DATA packet, which depends on the number
+	 * of external sensors present in the reading.
+	 */
+	if (wmr->packet_type == HISTORIC_DATA) {
+		assert(wmr->packet_len >= HIST_NUM_EXT_OFFSET);
+		num_ext_sensors = wmr->packet[HIST_NUM_EXT_OFFSET];
+		assert(wmr->packet_len == HIST_SENSORS_OFFSET + (1 + num_ext_sensors) * HIST_SENSOR_LEN + 2);
+	}
 
 	return true;
 }
@@ -516,9 +555,12 @@ handle_packet:
 			continue;
 
 		case PACKET_STOP_ACK:
-			/* ignore, response to prev CMD_STOP packet */
+			/*
+			 * Ignore, this is only a response to prev CMD_STOP packet.
+			 * This packet may have been sent during previous session.
+			 */
 			log_debug("Ignoring CMD_STOP packet");
-			break;
+			continue;
 		}
 
 		wmr->packet_len = read_byte(wmr);
