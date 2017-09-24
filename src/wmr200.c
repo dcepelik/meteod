@@ -12,15 +12,19 @@
 #include <assert.h>
 #include <hidapi.h>
 #include <pthread.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <syslog.h>
 #include <time.h>
 #include <unistd.h>
 
 #define	NTH_BIT(n, val)		(((val) >> (n)) & 0x01)
 #define	LOW(b)			((b) & 0x0F)
-#define	HIGH(b)			((b) & 0xF0)
+#define	HIGH(b)			LOW((b) >> 4)
+
+#define	WMR200_FRAME_SIZE	8
 
 /*
  * Although heartbeat is required every 30 seconds, using a little
@@ -60,12 +64,24 @@
 #define HIST_SENSOR_LEN		7	/* external sensor reading length in HISTORIC_DATA*/
 
 /*
+ * This is the default error handler which terminates connection
+ * and exits.
+ */
+static void default_error_handler(struct wmr200 *wmr, void *arg)
+{
+	(void) arg;
+	wmr_stop(wmr);
+	wmr_close(wmr);
+	exit(EXIT_FAILURE);
+}
+
+/*
  * WMR200 connection and communication context.
  */
 struct wmr200
 {
 	hid_device *dev;		/* HIDAPI device handle */
-	struct wmr_handler *handler;	/* loggers TODO */
+	struct wmr_logger *logger;	/* linked list of loggers */
 	pthread_t mainloop_thread;	/* main loop thread */
 	pthread_t heartbeat_thread;	/* heartbeat loop thread */
 	wmr_latest_data latest;		/* latest readings */
@@ -79,6 +95,9 @@ struct wmr200
 	byte_t *packet;			/* current packet */
 	size_t packet_len;		/* length of the packet */
 	byte_t packet_type;		/* type of the packet */
+
+	wmr_err_handler_t *err_handler;	/* error handler */
+	void *err_arg;			/* argument to error handler */
 };
 
 /*
@@ -124,11 +143,11 @@ enum sign
 	SIGN_NEGATIVE = 0x8
 };
 
-struct wmr_handler
+struct wmr_logger
 {
-	wmr_handler_t handler;
-	void *arg;
-	struct wmr_handler *next;
+	struct wmr_logger *next;	/* linked list of loggers */
+	wmr_logger_t *logger;		/* logger callback */
+	void *arg;			/* extra argument to @logger */
 };
 
 /*
@@ -183,18 +202,26 @@ static const char *wind_dir_string[] = {
 	"NNW"
 };
 
+static void error(struct wmr200 *wmr, char *msg, ...)
+{
+	va_list args;
+
+	va_start(args, msg);
+	vsyslog(LOG_ERR, msg, args); /* TODO */
+	va_end(args);
+
+	if (wmr->err_handler)
+		wmr->err_handler(wmr, wmr->err_arg);
+}
+
 static byte_t read_byte(struct wmr200 *wmr)
 {
 	ssize_t ret;
 
 	if (wmr->buf_avail == 0) {
-again:
 		ret = hid_read(wmr->dev, wmr->buf, WMR200_FRAME_SIZE);
-		if (ret < 0) {
-			log_warning("hid_read: read error\n");
-			goto again;
-			/* TODO teardown instead */
-		}
+		if (ret < 0)
+			error(wmr, "hid_read: read error\n");
 
 		wmr->meta.num_frames++;
 		wmr->buf_avail = wmr->buf[0];
@@ -211,11 +238,8 @@ static void send_cmd(struct wmr200 *wmr, byte_t cmd)
 	byte_t data[2] = { 0x01, cmd };
 	int ret = hid_write(wmr->dev, data, sizeof(data));
 
-	if (ret != sizeof(data)) {
-		fprintf(stderr, "hid_write: cannot write command\n");
-		exit(1);
-		/* TODO teardown instead */
-	}
+	if (ret != sizeof(data))
+		error(wmr, "hid_write: cannot write command\n");
 }
 
 static void send_heartbeat(struct wmr200 *wmr)
@@ -245,12 +269,10 @@ static time_t get_reading_time_from_packet(struct wmr200 *wmr)
 
 static void invoke_handlers(struct wmr200 *wmr, wmr_reading *reading)
 {
-	struct wmr_handler *handler = wmr->handler;
+	struct wmr_logger *logger;
 
-	while (handler != NULL) {
-		handler->handler(reading, handler->arg);
-		handler = handler->next;
-	}
+	for (logger = wmr->logger; logger != NULL; logger = logger->next)
+		logger->logger(wmr, reading, logger->arg);
 }
 
 static void update_if_newer(wmr_reading *old, wmr_reading *new)
@@ -345,14 +367,11 @@ static void process_baro_data(struct wmr200 *wmr, byte_t *data)
 
 static void process_temp_data(struct wmr200 *wmr, byte_t *data)
 {
-	int sensor_id = LOW(data[7]);
+	byte_t sensor_id = LOW(data[7]);
 
 	/* TODO */
-	if (sensor_id > 1) {
-		fprintf(stderr, "Unknown sensor, ID: %i\n", sensor_id);
-		exit(1);
-		/* teardown instead */
-	}
+	if (sensor_id > 1)
+		error(wmr, "Unknown sensor (ID=%u)\n", sensor_id);
 
 	byte_t humidity = data[10];
 	byte_t heat_index = data[13];
@@ -376,6 +395,8 @@ static void process_temp_data(struct wmr200 *wmr, byte_t *data)
 			.sensor_id = sensor_id
 		}
 	};
+
+	log_debug("The reading belongs to sensor '%s'", wmr_sensor_name(&reading));
 
 	update_if_newer(&wmr->latest.temp[sensor_id], &reading);
 	invoke_handlers(wmr, &reading);
@@ -485,9 +506,8 @@ static bool verify_packet(struct wmr200 *wmr)
 	 */
 	if (packet_len[wmr->packet_type] > 0) {
 		if (wmr->packet_len != packet_len[wmr->packet_type]) {
-			log_error("Invalid %s packet length (%zu), dropping",
+			error(wmr, "Invalid %s packet length (%zu)",
 				packet_type_to_string(wmr->packet_type), wmr->packet_len);
-			/* TODO teardown */
 		}
 	}
 
@@ -529,7 +549,7 @@ static void dispatch_packet(struct wmr200 *wmr)
 		process_status_data(wmr, wmr->packet);
 		break;
 	default:
-		log_warning("Ignoring unknown packet 0x%02X", wmr->packet_type);
+		error(wmr, "Received unknown packet (type=0x%02X)", wmr->packet_type);
 	}
 }
 
@@ -540,7 +560,6 @@ static void mainloop(struct wmr200 *wmr)
 	while (1) {
 		wmr->packet_type = read_byte(wmr);
 
-handle_packet:
 		switch (wmr->packet_type) {
 		case PACKET_HISTDATA_NOTIF:
 			log_info("Data logger contains some unprocessed "
@@ -570,23 +589,10 @@ handle_packet:
 			wmr->packet_len);
 
 		/*
-		 * When communication gets out of sync, we may read a packet length
-		 * value which is actually packet type. This is a rather trivial
-		 * attempt to re-sync.
-		 */
-		if (wmr->packet_len >= 0xD0 && wmr->packet_len <= 0xDF) {
-			wmr->packet_type = wmr->packet_len;
-			goto handle_packet;
-		}
-
-		/*
 		 * If a packet exceeds maximum size, drop it.
 		 */
-		if (wmr->packet_len > MAX_PACKET_LEN) {
-			log_warning("Dropping oversize packet (%zu B)", wmr->packet_len);
-			for (i = 0; i < wmr->packet_len; i++)
-				(void) read_byte(wmr);
-		}
+		if (wmr->packet_len > MAX_PACKET_LEN)
+			error(wmr, "Received oversize packet (len=%zu)", wmr->packet_len);
 
 		wmr->packet = malloc_safe(wmr->packet_len);
 		wmr->packet[0] = wmr->packet_type;
@@ -653,8 +659,9 @@ struct wmr200 *wmr_open(void)
 
 	wmr->packet = NULL;
 	wmr->buf_avail = wmr->buf_pos = 0;
-	wmr->handler = NULL;
+	wmr->logger = NULL;
 	wmr->conn_since = time(NULL);
+	wmr->err_handler = default_error_handler;
 	memset(&wmr->latest, 0, sizeof(wmr->latest));
 	memset(&wmr->meta, 0, sizeof(wmr->meta));
 
@@ -706,7 +713,7 @@ int wmr_start(struct wmr200 *wmr)
 		return -1;
 	}
 
-	log_debug("Started main thread");
+	log_debug("Started main loop thread");
 
 	send_cmd(wmr, CMD_ERASE);
 	return 0;
@@ -718,13 +725,21 @@ void wmr_stop(struct wmr200 *wmr)
 	pthread_cancel(wmr->mainloop_thread);
 	pthread_join(wmr->heartbeat_thread, NULL);
 	pthread_join(wmr->mainloop_thread, NULL);
+	send_cmd(wmr, CMD_STOP);
 }
 
-void wmr_add_handler(struct wmr200 *wmr, wmr_handler_t func, void *arg)
+void wmr_register_logger(struct wmr200 *wmr, wmr_logger_t *func, void *arg)
 {
-	struct wmr_handler *handler = malloc_safe(sizeof (struct wmr_handler));
-	handler->handler = func;
-	handler->arg = arg;
-	handler->next = wmr->handler;
-	wmr->handler = handler;
+	struct wmr_logger *logger = malloc_safe(sizeof(*logger));
+	logger->logger = func;
+	logger->arg = arg;
+
+	logger->next = wmr->logger;
+	wmr->logger = logger;
+}
+
+void wmr_set_error_handler(struct wmr200 *wmr, wmr_err_handler_t handler, void *arg)
+{
+	wmr->err_handler = handler;
+	wmr->err_arg = arg;
 }

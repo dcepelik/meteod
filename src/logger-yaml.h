@@ -15,7 +15,7 @@
 #include "wmrdata.h"
 
 
-void yaml_push_reading(wmr_reading *reading, void *arg);
+void yaml_push_reading(struct wmr200 *wmr, wmr_reading *reading, void *arg);
 
 
 #endif

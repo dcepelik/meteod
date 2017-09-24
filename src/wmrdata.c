@@ -15,8 +15,6 @@
 char *
 wmr_sensor_name(wmr_reading *reading)
 {
-	strbuf buf;
-
 	switch (reading->type) {
 	case WMR_WIND:
 		return "wind";
@@ -31,12 +29,32 @@ wmr_sensor_name(wmr_reading *reading)
 		return "baro";
 
 	case WMR_TEMP:
-		strbuf_init(&buf);
-		strbuf_append(&buf, "temp%u", reading->temp.sensor_id);
-		char *out = strbuf_copy(&buf);
-		strbuf_free(&buf);
-
-		return out;
+		switch (reading->temp.sensor_id) {
+		case 0:
+			return "console";
+		case 1:
+			return "ext1";
+		case 2:
+			return "ext2";
+		case 3:
+			return "ext3";
+		case 4:
+			return "ext4";
+		case 5:
+			return "ext5";
+		case 6:
+			return "ext6";
+		case 7:
+			return "ext7";
+		case 8:
+			return "ext8";
+		case 9:
+			return "ext9";
+		case 10:
+			return "ext10";
+		default:
+			return NULL;
+		}
 
 	case WMR_STATUS:
 		return "status";

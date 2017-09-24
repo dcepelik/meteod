@@ -166,8 +166,10 @@ log_reading(wmr_reading *reading, char *rrd_root)
 
 
 void
-rrd_push_reading(wmr_reading *reading, void *arg)
+rrd_push_reading(struct wmr200 *wmr, wmr_reading *reading, void *arg)
 {
+	(void) wmr;
+
 	char *rrd_root = (char *)arg;
 	log_reading(reading, rrd_root);
 }

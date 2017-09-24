@@ -142,8 +142,10 @@ log_reading(wmr_reading *reading, FILE *stream)
 
 
 void
-yaml_push_reading(wmr_reading *reading, void *arg)
+yaml_push_reading(struct wmr200 *wmr, wmr_reading *reading, void *arg)
 {
+	(void) wmr;
+
 	FILE *stream = (FILE *)arg;
 	log_reading(reading, stream);
 }

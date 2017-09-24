@@ -14,6 +14,8 @@
 #include "common.h"
 #include "strbuf.h"
 
+struct wmr200;
+
 
 enum packet_type {
 	PACKET_ERASE_ACK= 0xDB,		/* data erase successful (after CMD_ERASE) */

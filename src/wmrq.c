@@ -92,16 +92,16 @@ main(int argc, const char *argv[])
 	wmr_latest_data data;
 	deserialize_data(&arr, &data);
 
-	yaml_push_reading(&data.wind, stdout);
-	yaml_push_reading(&data.rain, stdout);
-	yaml_push_reading(&data.uvi, stdout);
+	yaml_push_reading(NULL, &data.wind, stdout);
+	yaml_push_reading(NULL, &data.rain, stdout);
+	yaml_push_reading(NULL, &data.uvi, stdout);
 	
 	for (i = 0; i < WMR200_MAX_TEMP_SENSORS; i++)
-		yaml_push_reading(&data.temp[i], stdout);
+		yaml_push_reading(NULL, &data.temp[i], stdout);
 
-	yaml_push_reading(&data.baro, stdout);
-	yaml_push_reading(&data.status, stdout);
-	yaml_push_reading(&data.meta, stdout);
+	yaml_push_reading(NULL, &data.baro, stdout);
+	yaml_push_reading(NULL, &data.status, stdout);
+	yaml_push_reading(NULL, &data.meta, stdout);
 
 	(void) close(fd);
 	DEBUG_MSG("%s", "Connection to server closed");

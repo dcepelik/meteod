@@ -101,11 +101,11 @@ main(int argc, char *argv[])
 			else if ((fp = fopen(optarg, "w")) == NULL)
 				log_exit("Cannot open output file");
 
-			wmr_add_handler(wmr, yaml_push_reading, fp);
+			wmr_register_logger(wmr, yaml_push_reading, fp);
 			break;
 
 		case 'R':
-			wmr_add_handler(wmr, rrd_push_reading, optarg);
+			wmr_register_logger(wmr, rrd_push_reading, optarg);
 			break;
 
 		default:
@@ -120,7 +120,7 @@ main(int argc, char *argv[])
 		if (server_start(&srv) != 0)
 			log_exit("Cannot start server\n");
 
-		wmr_add_handler(wmr, server_push_reading, &srv);
+		wmr_register_logger(wmr, server_push_reading, &srv);
 	}
 
 	if (wmr_start(wmr) != 0)
