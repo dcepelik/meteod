@@ -93,7 +93,7 @@ mainloop_pthread(void *x)
 
 
 void
-server_init(wmr_server *srv, wmr200 *wmr)
+server_init(wmr_server *srv, struct wmr200 *wmr)
 {
 	srv->wmr = wmr;
 	srv->fd = srv->thread_id = -1;

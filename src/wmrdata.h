@@ -31,7 +31,7 @@ enum packet_type {
 
 
 typedef struct {
-	const char *dir;	/* wind direction, see `wmr200.c' */
+	const char *dir;	/* wind direction, see `struct wmr200.c' */
 	float gust_speed;	/* gust speed, m/s */
 	float avg_speed;	/* average speed, m/s */
 	float chill;		/* TODO what's this? */
@@ -54,7 +54,7 @@ typedef struct {
 typedef struct {
 	uint_t pressure;	/* immediate pressure, hPa */
 	uint_t alt_pressure;	/* TODO */
-	const char *forecast;	/* name of "forecast icon", see `wmr200.c' */
+	const char *forecast;	/* name of "forecast icon", see `struct wmr200.c' */
 } wmr_baro;
 
 
@@ -68,17 +68,26 @@ typedef struct {
 
 
 typedef struct {
-	const char *wind_bat;		/* battery levels, see `wmr200.c' */
+	/*
+	 * Battery level strings (see `level_string' in `struct wmr200.c').
+	 */
+	const char *wind_bat;
 	const char *temp_bat;
 	const char *rain_bat;
 	const char *uv_bat;
 
-	const char *wind_sensor;	/* sensor states, see `wmr200.c' */
+	/*
+	 * Sensor status strings (see `status_string' in `struct wmr200.c').
+	 */
+	const char *wind_sensor;
 	const char *temp_sensor;
 	const char *rain_sensor;
 	const char *uv_sensor;
 
-	const char *rtc_signal_level;	/* signal level of the RTC */
+	/*
+	 * Real Time Clock (RTC) signal level (see `level_string' in `struct wmr200.c').
+	 */
+	const char *rtc_signal_level;
 } wmr_status;
 
 

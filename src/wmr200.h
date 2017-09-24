@@ -26,7 +26,8 @@ typedef void (*wmr_handler_t)(wmr_reading *reading, void *arg);
 
 struct wmr_handler;
 
-typedef struct { /* move to .c */
+struct wmr200
+{ /* move to .c */
 	hid_device *dev;		/* HIDAPI device handle */
 	pthread_t mainloop_thread;	/* main loop thread id */
 	pthread_t heartbeat_thread;	/* heartbeat loop thread id */
@@ -44,14 +45,14 @@ typedef struct { /* move to .c */
 	uchar *packet;
 	uchar packet_type;
 	uint_t packet_len;
-} wmr200;
+};
 
 void wmr_init();
 void wmr_end();
-wmr200 *wmr_open();
-int wmr_start(wmr200 *wmr);
-void wmr_stop(wmr200 *wmr);
-void wmr_close(wmr200 *wmr);
-void wmr_add_handler(wmr200 *wmr, wmr_handler_t handler, void *arg);
+struct wmr200 *wmr_open();
+int wmr_start(struct wmr200 *wmr);
+void wmr_stop(struct wmr200 *wmr);
+void wmr_close(struct wmr200 *wmr);
+void wmr_add_handler(struct wmr200 *wmr, wmr_handler_t handler, void *arg);
 
 #endif

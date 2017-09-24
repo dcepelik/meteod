@@ -71,7 +71,7 @@ main(int argc, char *argv[])
 	char *argv0 = argv[0];
 	FILE *fp;
 	sigset_t set, oldset;
-	wmr200 *wmr;
+	struct wmr200 *wmr;
 	wmr_server srv;
 	int c;
 
