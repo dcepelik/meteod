@@ -16,44 +16,57 @@
 #include "server.h"
 #include "wmr200.h"
 
+#include <assert.h>
 #include <err.h>
 #include <getopt.h>
+#include <libgen.h>
 #include <pthread.h>
 #include <signal.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
+pthread_mutex_t mutex;
+pthread_cond_t error_or_signal;
+bool error;
+unsigned reconnect_interval_default = 3; /* s */
+bool reconnect_on_error = true;
+char *argv0;
 
-volatile sig_atomic_t exit_flag = 0;
-int flag_start_server = 0;
+#define RECONNECT_INTERVAL_MAX	300
 
-int port = 20892;
-
-static struct option longopts[] = {
-	{ "run-server",		no_argument,		NULL,		'S' },
-	{ "port",		required_argument,	&port,		'p' },
-	{ "to-file",		required_argument,	NULL,		'F' },
-	{ "to-rrd",		required_argument,	NULL,		'R' },
-};
-
-static const char *optstr = "Sp:F:R:";
-
-
-static void
-signal_handler(int signum)
+static void signal_dispatch(int signum)
 {
 	switch (signum) {
 	case SIGINT:
 	case SIGTERM:
-		exit_flag = 1;
+		pthread_mutex_lock(&mutex);
+		pthread_cond_signal(&error_or_signal);
+		pthread_mutex_unlock(&mutex);
+		break;
 	}
 }
 
 
-static void
-usage(char *argv0)
+/*
+ * Error handler. Called when a fatal error occurs while talking to
+ * the station.
+ */
+static void error_handler(struct wmr200 *wmr, void *arg)
+{
+	(void) arg;
+	(void) wmr;
+
+	pthread_mutex_lock(&mutex);
+	error = 1;
+	pthread_cond_signal(&error_or_signal);
+	pthread_mutex_unlock(&mutex);
+}
+
+
+static void usage(char *argv0)
 {
 	fprintf(stderr, "%s: usage: %s <options>\n", argv0, argv0);
 	fprintf(stderr,
@@ -68,90 +81,96 @@ usage(char *argv0)
 int
 main(int argc, char *argv[])
 {
-	char *argv0 = argv[0];
-	FILE *fp;
-	sigset_t set, oldset;
+	(void) argc;
+	(void) argv;
+
+	sigset_t set;
+	sigset_t oldset;
 	struct wmr200 *wmr;
-	wmr_server srv;
-	int c;
+	struct sigaction sa;
+	unsigned reconnect_interval = reconnect_interval_default;
+
+	argv0 = basename(argv[0]);
 
 	log_open_syslog();
 
-	/* hide signals away from created threads */
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = signal_dispatch;
+	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGINT, &sa, NULL);
+
+	/*
+	 * Block SIGINT/SIGTERM in spawned threads. This way we can be sure
+	 * that the main thread will receive the signal.
+	 */
 	sigemptyset(&set);
 	sigaddset(&set, SIGINT);
 	sigaddset(&set, SIGTERM);
 	pthread_sigmask(SIG_BLOCK, &set, &oldset);
+
+	pthread_mutex_init(&mutex, NULL);
+	pthread_cond_init(&error_or_signal, NULL);
+
 	wmr_init();
-	wmr = wmr_open();
 
-	if (wmr == NULL)
-		log_exit("wmr_open: no WMR200 handle returned\n");
+connect:
+	pthread_mutex_lock(&mutex);
 
-	while ((c = getopt_long(argc, argv, optstr, longopts, NULL)) != -1) {
-		switch (c) {
-
-		case 'S':
-			flag_start_server = 1;
-			break;
-			
-		case 'F':
-			if (strcmp(optarg, "-") == 0)
-				fp = stdout;
-			else if ((fp = fopen(optarg, "w")) == NULL)
-				log_exit("Cannot open output file");
-
-			wmr_register_logger(wmr, yaml_push_reading, fp);
-			break;
-
-		case 'R':
-			wmr_register_logger(wmr, rrd_push_reading, optarg);
-			break;
-
-		default:
-			usage(argv0);
-			exit(EXIT_FAILURE);
-		}
+	if (error) {
+		log_info("Waiting %u seconds before reconnecting.", reconnect_interval);
+		sleep(reconnect_interval);
+		/* TODO what if signal arrives here? */
+		reconnect_interval = MIN(2 * reconnect_interval, RECONNECT_INTERVAL_MAX);
 	}
 
-	if (flag_start_server) {
-		server_init(&srv, wmr);
-
-		if (server_start(&srv) != 0)
-			log_exit("Cannot start server\n");
-
-		wmr_register_logger(wmr, server_push_reading, &srv);
+	if ((wmr = wmr_open()) == NULL) {
+		log_error("wmr_open: connection failed\n");
+		error = true;
+		pthread_mutex_unlock(&mutex);
+		goto quit;
 	}
 
-	if (wmr_start(wmr) != 0)
-		log_msg(LOG_CRIT, "Cannot start communication with WMR200\n");
+	wmr_set_error_handler(wmr, error_handler, NULL);
 
-	pthread_sigmask(SIG_SETMASK, &oldset, NULL);
+	if (wmr_start(wmr) != 0) {
+		log_error("wmr_start: cannot start communication with the station");
+		error = true;
+		goto disconnect;
+	}
 
-	struct sigaction sa;
-	memset(&sa, 0, sizeof (sa));
-	sa.sa_handler = signal_handler;
-	sigaction(SIGTERM, &sa, NULL);
-	sigaction(SIGINT, &sa, NULL);
+	error = false;
+	reconnect_interval = reconnect_interval_default;
 
 	//daemonize(argv0);
 
-	while (1) {
-		pause(); /* wait here for a signal to arrive */
-		if (exit_flag)
-			break;
-	}
+	/*
+	 * Wait here until either an error occurs, or SIGINT/SIGTERM is received.
+	 */
+	pthread_sigmask(SIG_SETMASK, &oldset, NULL);
+	pthread_cond_wait(&error_or_signal, &mutex);
+	pthread_mutex_unlock(&mutex);
 
 	wmr_stop(wmr);
+
+disconnect:
 	wmr_close(wmr);
+
+quit:
+	if (error) {
+		log_error("Connection was terminated because an error occured.");
+
+		if (reconnect_on_error)
+			goto connect;
+	}
+	else {
+		log_info("Terminating on SIGINT/SIGTERM.");
+	}
+
 	wmr_end();
 
-	server_stop(&srv);
+	pthread_mutex_destroy(&mutex);
+	pthread_cond_destroy(&error_or_signal);
 
-	if (fp != NULL)
-		fclose(fp);
-
-	log_msg(LOG_NOTICE, "Graceful termination\n");
-	return (EXIT_SUCCESS);
+	return error ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 

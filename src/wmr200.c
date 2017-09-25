@@ -2,6 +2,11 @@
  * Oregon Scientific WMR200 USB HID communication wrapper.
  *
  * Copyright (c) 2015-2017 David Čepelík <d@dcepelik.cz>
+ *
+ * See [1] for a nice write-up of the protocol and message format
+ * used by Oregon Scientific WMR200 and their other devices.
+ *
+ * [1] https://www.bashewa.com/wmr200-protocol.php
  */
 
 #include "common.h"
@@ -24,7 +29,7 @@
 #define	LOW(b)			((b) & 0x0F)
 #define	HIGH(b)			LOW((b) >> 4)
 
-#define	WMR200_FRAME_SIZE	8
+#define	FRAME_SIZE		8
 
 /*
  * Although heartbeat is required every 30 seconds, using a little
@@ -52,7 +57,7 @@
 /*
  * The following HIST_* constants are offsets into the HISTORIC_DATA
  * packets. Although offsets are generally hardcoded in the packet
- * processing logic, they are introduced as constants fo HISTORIC_DATA
+ * processing logic, they are introduced as constants for HISTORIC_DATA
  * packets, as it makes the code easier to understand.
  */
 #define HIST_RAIN_OFFSET	7
@@ -88,7 +93,7 @@ struct wmr200
 	wmr_meta meta;			/* system metadata packet (updated on the fly) */
 	time_t conn_since;		/* time the connection was established */
 
-	byte_t buf[WMR200_FRAME_SIZE];	/* RX buffer */
+	byte_t buf[FRAME_SIZE];	/* RX buffer */
 	size_t buf_avail;		/* number of bytes available in the buffer */
 	size_t buf_pos;			/* read position within the buffer */
 
@@ -130,12 +135,12 @@ enum command
 {
 	CMD_HEARTBEAT = 0xD0,		/* I'm alive, keep sending data */
 	CMD_REQUEST_HISTDATA = 0xDA,	/* send me next record from internal logger */
-	CMD_ERASE = 0xDB,	/* erase internal logger data */
+	CMD_ERASE = 0xDB,		/* erase internal logger data */
 	CMD_STOP = 0xDF			/* terminate commmunication */
 };
 
 /*
- * Sign to indicate positive/negative value.
+ * Sign to indicate positive/negative number.
  */
 enum sign
 {
@@ -146,7 +151,7 @@ enum sign
 struct wmr_logger
 {
 	struct wmr_logger *next;	/* linked list of loggers */
-	wmr_logger_t *logger;		/* logger callback */
+	wmr_logger_t *func;		/* logger callback */
 	void *arg;			/* extra argument to @logger */
 };
 
@@ -219,7 +224,7 @@ static byte_t read_byte(struct wmr200 *wmr)
 	ssize_t ret;
 
 	if (wmr->buf_avail == 0) {
-		ret = hid_read(wmr->dev, wmr->buf, WMR200_FRAME_SIZE);
+		ret = hid_read(wmr->dev, wmr->buf, FRAME_SIZE);
 		if (ret < 0)
 			error(wmr, "hid_read: read error\n");
 
@@ -255,15 +260,14 @@ static void send_heartbeat(struct wmr200 *wmr)
 static time_t get_reading_time_from_packet(struct wmr200 *wmr)
 {
 	struct tm tm = {
-		.tm_year	= (2000 + wmr->packet[6]) - 1900,
-		.tm_mon		= wmr->packet[5],
-		.tm_mday	= wmr->packet[4],
-		.tm_hour	= wmr->packet[3],
-		.tm_min		= wmr->packet[2],
-		.tm_sec		= 0,
-		.tm_isdst	= -1
+		.tm_year = (2000 + wmr->packet[6]) - 1900,
+		.tm_mon = wmr->packet[5],
+		.tm_mday = wmr->packet[4],
+		.tm_hour = wmr->packet[3],
+		.tm_min = wmr->packet[2],
+		.tm_sec = 0,
+		.tm_isdst = -1
 	};
-
 	return mktime(&tm);
 }
 
@@ -272,7 +276,7 @@ static void invoke_handlers(struct wmr200 *wmr, wmr_reading *reading)
 	struct wmr_logger *logger;
 
 	for (logger = wmr->logger; logger != NULL; logger = logger->next)
-		logger->logger(wmr, reading, logger->arg);
+		logger->func(wmr, reading, logger->arg);
 }
 
 static void update_if_newer(wmr_reading *old, wmr_reading *new)
@@ -327,6 +331,9 @@ static void process_rain_data(struct wmr200 *wmr, byte_t *data)
 	invoke_handlers(wmr, &reading);
 }
 
+/*
+ * Process WMR_UVI packet. Contains UV index information.
+ */
 static void process_uvi_data(struct wmr200 *wmr, byte_t *data)
 {
 	byte_t index = LOW(data[7]);
@@ -343,6 +350,10 @@ static void process_uvi_data(struct wmr200 *wmr, byte_t *data)
 	invoke_handlers(wmr, &reading);
 }
 
+/*
+ * Process WMR_BARO packet. Contains barometric data and a simple weather
+ * forecast.
+ */
 static void process_baro_data(struct wmr200 *wmr, byte_t *data)
 {
 	uint_t pressure = 256 * LOW(data[8]) + data[7];
@@ -365,6 +376,9 @@ static void process_baro_data(struct wmr200 *wmr, byte_t *data)
 	invoke_handlers(wmr, &reading);
 }
 
+/*
+ * Process WMR_TEMP packet. Contains temperature and humidity data.
+ */
 static void process_temp_data(struct wmr200 *wmr, byte_t *data)
 {
 	byte_t sensor_id = LOW(data[7]);
@@ -402,6 +416,10 @@ static void process_temp_data(struct wmr200 *wmr, byte_t *data)
 	invoke_handlers(wmr, &reading);
 }
 
+/*
+ * Process a WMR_STATUS packet. Contains information about batteries
+ * and signal levels of sensors.
+ */
 static void process_status_data(struct wmr200 *wmr, byte_t *data)
 {
 	byte_t wind_bat = NTH_BIT(0, data[4]);
@@ -481,6 +499,12 @@ static void emit_meta_packet(struct wmr200 *wmr)
 	invoke_handlers(wmr, &reading);
 }
 
+/*
+ * Verify current packet's checksum and length.
+ *
+ * Return value:
+ *	false if packet is known to be invalid, true otherwise.
+ */
 static bool verify_packet(struct wmr200 *wmr)
 {
 	uint_t sum;
@@ -524,6 +548,10 @@ static bool verify_packet(struct wmr200 *wmr)
 	return true;
 }
 
+/*
+ * Dispatch the processing of current (reading) packet. Fail if the
+ * packet type is unknown.
+ */
 static void dispatch_packet(struct wmr200 *wmr)
 {
 	switch (wmr->packet_type) {
@@ -553,6 +581,10 @@ static void dispatch_packet(struct wmr200 *wmr)
 	}
 }
 
+/*
+ * Main communication loop. Receives packets from the station and acts
+ * accordingly.
+ */
 static void mainloop(struct wmr200 *wmr)
 {
 	size_t i;
@@ -617,34 +649,42 @@ free_packet:
 	}
 }
 
-void *mainloop_pthread(void *arg)
-{
-	struct wmr200 *wmr = (struct wmr200 *)arg;
-	mainloop(wmr); /* TODO register any cleanup handlers here? */
-
-	return NULL;
-}
-
+/*
+ * Heartbeat loop. Unless a heartbeat packet is sent every 30 seconds, the
+ * station will switch from real-time mode to logging mode and no readings
+ * will be transfered.
+ */
 static void heartbeat_loop(struct wmr200 *wmr)
 {
 	while (1) {
 		send_heartbeat(wmr);
 		emit_meta_packet(wmr);
-
 		usleep(HEARTBEAT_INTERVAL_SEC * 1e6);
 	}
 }
 
-static void *heartbeat_loop_pthread(void *arg)
+/*
+ * Wrapper around mainloop for use with pthread.
+ */
+static void *mainloop_pthread(void *arg)
 {
 	struct wmr200 *wmr = (struct wmr200 *)arg;
-	heartbeat_loop(wmr);
-	
+	mainloop(wmr); /* TODO register any cleanup handlers here? */
 	return NULL;
 }
 
 /*
- * public interface
+ * Wrapper around heartbeat_loop for use with pthread.
+ */
+static void *heartbeat_loop_pthread(void *arg)
+{
+	struct wmr200 *wmr = (struct wmr200 *)arg;
+	heartbeat_loop(wmr);
+	return NULL;
+}
+
+/*
+ * Public interface.
  */
 
 struct wmr200 *wmr_open(void)
@@ -730,11 +770,13 @@ void wmr_stop(struct wmr200 *wmr)
 
 void wmr_register_logger(struct wmr200 *wmr, wmr_logger_t *func, void *arg)
 {
-	struct wmr_logger *logger = malloc_safe(sizeof(*logger));
-	logger->logger = func;
+	struct wmr_logger *logger;
+	
+	logger = malloc_safe(sizeof(*logger));
+	logger->func = func;
 	logger->arg = arg;
-
 	logger->next = wmr->logger;
+
 	wmr->logger = logger;
 }
 
