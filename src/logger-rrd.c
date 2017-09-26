@@ -39,7 +39,7 @@ static void write_rrd(char *file_rel_path, char *rrd_root, strbuf *data)
 	strbuf_free(&filename);
 }
 
-static void log_wind(wmr_wind *wind, char *rrd_root)
+static void log_wind(struct wmr_wind *wind, char *rrd_root)
 {
 	strbuf data;
 	strbuf_init(&data);
@@ -53,7 +53,7 @@ static void log_wind(wmr_wind *wind, char *rrd_root)
 	strbuf_free(&data);
 }
 
-static void log_rain(wmr_rain *rain, char *rrd_root)
+static void log_rain(struct wmr_rain *rain, char *rrd_root)
 {
 	strbuf data;
 	strbuf_init(&data);
@@ -67,7 +67,7 @@ static void log_rain(wmr_rain *rain, char *rrd_root)
 	strbuf_free(&data);
 }
 
-static void log_uvi(wmr_uvi *uvi, char *rrd_root)
+static void log_uvi(struct wmr_uvi *uvi, char *rrd_root)
 {
 	strbuf data;
 	strbuf_init(&data);
@@ -80,7 +80,7 @@ static void log_uvi(wmr_uvi *uvi, char *rrd_root)
 	strbuf_free(&data);
 }
 
-static void log_baro(wmr_baro *baro, char *rrd_root)
+static void log_baro(struct wmr_baro *baro, char *rrd_root)
 {
 	strbuf data;
 	strbuf_init(&data);
@@ -94,7 +94,7 @@ static void log_baro(wmr_baro *baro, char *rrd_root)
 	strbuf_free(&data);
 }
 
-static void log_temp(wmr_temp *temp, char *rrd_root)
+static void log_temp(struct wmr_temp *temp, char *rrd_root)
 {
 	strbuf data;
 	strbuf_init(&data);
@@ -115,7 +115,7 @@ static void log_temp(wmr_temp *temp, char *rrd_root)
 	strbuf_free(&filename);
 }
 
-static void log_reading(wmr_reading *reading, char *rrd_root)
+static void log_reading(struct wmr_reading *reading, char *rrd_root)
 {
 	switch (reading->type) {
 	case WMR_WIND:
@@ -143,7 +143,7 @@ static void log_reading(wmr_reading *reading, char *rrd_root)
 
 
 void
-rrd_push_reading(struct wmr200 *wmr, wmr_reading *reading, void *arg)
+rrd_push_reading(struct wmr200 *wmr, struct wmr_reading *reading, void *arg)
 {
 	(void) wmr;
 

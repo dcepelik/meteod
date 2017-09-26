@@ -12,22 +12,19 @@
 #include "strbuf.h"
 
 
-char *
-wmr_sensor_name(wmr_reading *reading)
+const char *wmr_sensor_name(struct wmr_reading *reading)
 {
 	switch (reading->type) {
 	case WMR_WIND:
 		return "wind";
-
 	case WMR_RAIN:
 		return "rain";
-
 	case WMR_UVI:
 		return "uvi";
-
 	case WMR_BARO:
-		return "baro";
-
+	case WMR_STATUS:
+	case WMR_META:
+		return "console";
 	case WMR_TEMP:
 		switch (reading->temp.sensor_id) {
 		case 0:
@@ -55,12 +52,6 @@ wmr_sensor_name(wmr_reading *reading)
 		default:
 			return NULL;
 		}
-
-	case WMR_STATUS:
-		return "status";
-
-	case WMR_META:
-		return "meta";
 	}
 
 	return NULL;

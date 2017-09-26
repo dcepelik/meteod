@@ -89,8 +89,8 @@ struct wmr200
 	struct wmr_logger *logger;	/* linked list of loggers */
 	pthread_t mainloop_thread;	/* main loop thread */
 	pthread_t heartbeat_thread;	/* heartbeat loop thread */
-	wmr_latest_data latest;		/* latest readings */
-	wmr_meta meta;			/* system metadata packet (updated on the fly) */
+	struct wmr_latest_data latest;		/* latest readings */
+	struct wmr_meta meta;			/* system metadata packet (updated on the fly) */
 	time_t conn_since;		/* time the connection was established */
 
 	byte_t buf[FRAME_SIZE];	/* RX buffer */
@@ -271,7 +271,7 @@ static time_t get_reading_time_from_packet(struct wmr200 *wmr)
 	return mktime(&tm);
 }
 
-static void invoke_handlers(struct wmr200 *wmr, wmr_reading *reading)
+static void invoke_handlers(struct wmr200 *wmr, struct wmr_reading *reading)
 {
 	struct wmr_logger *logger;
 
@@ -279,7 +279,7 @@ static void invoke_handlers(struct wmr200 *wmr, wmr_reading *reading)
 		logger->func(wmr, reading, logger->arg);
 }
 
-static void update_if_newer(wmr_reading *old, wmr_reading *new)
+static void update_if_newer(struct wmr_reading *old, struct wmr_reading *new)
 {
 	if (new->time >= old->time)
 		*old = *new;
@@ -294,7 +294,7 @@ static void process_wind_data(struct wmr200 *wmr, byte_t *data)
 
 	assert(dir_flag < ARRAY_SIZE(wind_dir_string));
 
-	wmr_reading reading = {
+	struct wmr_reading reading = {
 		.type = WMR_WIND,
 		.time = get_reading_time_from_packet(wmr),
 		.wind = {
@@ -316,7 +316,7 @@ static void process_rain_data(struct wmr200 *wmr, byte_t *data)
 	float accum_24h	= ((data[12] << 8) + data[11]) * TENTH_OF_INCH;
 	float accum_2007 = ((data[14] << 8) + data[13]) * TENTH_OF_INCH;
 
-	wmr_reading reading = {
+	struct wmr_reading reading = {
 		.type = WMR_RAIN,
 		.time = get_reading_time_from_packet(wmr),
 		.rain = {
@@ -338,7 +338,7 @@ static void process_uvi_data(struct wmr200 *wmr, byte_t *data)
 {
 	byte_t index = LOW(data[7]);
 
-	wmr_reading reading = {
+	struct wmr_reading reading = {
 		.type = WMR_UVI,
 		.time = get_reading_time_from_packet(wmr),
 		.uvi = {
@@ -362,7 +362,7 @@ static void process_baro_data(struct wmr200 *wmr, byte_t *data)
 
 	assert(forecast < ARRAY_SIZE(forecast_string));
 
-	wmr_reading reading = {
+	struct wmr_reading reading = {
 		.type = WMR_BARO,
 		.time = get_reading_time_from_packet(wmr),
 		.baro = {
@@ -398,7 +398,7 @@ static void process_temp_data(struct wmr200 *wmr, byte_t *data)
 	if (HIGH(data[12]) == SIGN_NEGATIVE)
 		dew_point = -dew_point;
 
-	wmr_reading reading = {
+	struct wmr_reading reading = {
 		.type = WMR_TEMP,
 		.time = get_reading_time_from_packet(wmr),
 		.temp = {
@@ -434,7 +434,7 @@ static void process_status_data(struct wmr200 *wmr, byte_t *data)
 
 	byte_t rtc_signal = NTH_BIT(8, data[4]);
 
-	wmr_reading reading = {
+	struct wmr_reading reading = {
 		.type = WMR_STATUS,
 		.time = get_reading_time_from_packet(wmr),
 		.status = {
@@ -489,7 +489,7 @@ static void emit_meta_packet(struct wmr200 *wmr)
 	log_debug("Emitting system WMR_META packet");
 
 	wmr->meta.uptime = time(NULL) - wmr->conn_since;
-	wmr_reading reading = {
+	struct wmr_reading reading = {
 		.time = time(NULL),
 		.type = WMR_META,
 		.meta = wmr->meta,

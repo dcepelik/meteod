@@ -7,18 +7,14 @@ BUILD_DIR = build
 OBJS_DIR = $(BUILD_DIR)/objs
 DEPS_DIR = $(BUILD_DIR)/deps
 
-BINS = $(BUILD_DIR)/wmrd $(BUILD_DIR)/wmrq
+BINS = $(BUILD_DIR)/wmrd
 SRCS = common.c \
 	log.c \
 	wmr200.c \
 	strbuf.c \
-	serialize.c \
 	daemon.c \
-	server.c \
 	wmrdata.c \
-	logger-yaml.c \
-	logger-rrd.c \
-	logger-server.c
+	logger-rrd.c
 
 MAINS = $(OBJS_DIR)/wmrd.o $(OBJS_DIR)/wmrq.o
 OBJS = $(filter-out $(MAINS), $(addprefix $(OBJS_DIR)/, $(patsubst %.c, %.o, $(SRCS))))

@@ -89,7 +89,7 @@ main(int argc, const char *argv[])
 
 	DEBUG_MSG("Read %zu bytes from network", arr.size);
 
-	wmr_latest_data data;
+	struct wmr_latest_data data;
 	deserialize_data(&arr, &data);
 
 	yaml_push_reading(NULL, &data.wind, stdout);

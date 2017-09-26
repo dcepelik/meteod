@@ -24,7 +24,7 @@
 struct wmr200;
 
 
-typedef void wmr_logger_t(struct wmr200 *wmr, wmr_reading *reading, void *arg);
+typedef void wmr_logger_t(struct wmr200 *wmr, struct wmr_reading *reading, void *arg);
 typedef void wmr_err_handler_t(struct wmr200 *wmr, void *arg);
 
 /*

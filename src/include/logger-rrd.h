@@ -22,7 +22,7 @@
 #define	TEMPN_RRD	"temp%i.rrd"
 
 
-void rrd_push_reading(struct wmr200 *wmr, wmr_reading *reading, void *arg);
+void rrd_push_reading(struct wmr200 *wmr, struct wmr_reading *reading, void *arg);
 
 
 #endif
