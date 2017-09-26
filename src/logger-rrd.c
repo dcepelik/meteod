@@ -8,7 +8,6 @@
 #include "log.h"
 #include "logger-rrd.h"
 #include "strbuf.h"
-#include "wmrdata.h"
 
 #include <rrd.h>
 #include <time.h>

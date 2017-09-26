@@ -12,8 +12,8 @@ SRCS = common.c \
 	log.c \
 	wmr200.c \
 	strbuf.c \
+	server.c \
 	daemon.c \
-	wmrdata.c \
 	logger-rrd.c
 
 MAINS = $(OBJS_DIR)/wmrd.o $(OBJS_DIR)/wmrq.o

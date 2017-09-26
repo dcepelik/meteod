@@ -1,17 +1,9 @@
-	/*
-	 * loggers/server.c:
- * Server component of the WMR daemon
- *
- * This software may be freely used and distributed according to the terms
- * of the GNU GPL version 2 or 3. See LICENSE for more information.
- *
- * Copyright (c) 2015 David Čepelík <cepelik@gymlit.cz>
+/*
+ * Make data available over TCP/IP.
  */
-
 
 #include "common.h"
 #include "log.h"
-#include "serialize.h"
 #include "server.h"
 #include "strbuf.h"
 
@@ -28,16 +20,9 @@
 #include <time.h>
 #include <unistd.h>
 
-
-#define	ARRAY_ELEM		unsigned char
-#define	ARRAY_PREFIX(x)		byte_##x
-#include "array.h"
-
 #define	DEFAULT_PORT		20892
 
-
-static void
-mainloop(wmr_server *srv)
+static void mainloop(wmr_server *srv)
 {
 	int fd;
 
@@ -49,34 +34,30 @@ mainloop(wmr_server *srv)
 
 		log_debug("Client accepted, fd = %u", fd);
 
-		struct byte_array data;
-		byte_array_init(&data);
+		//struct byte_array data;
+		//byte_array_init(&data);
 
 		/* TODO */
 		//serialize_data(&data, &srv->wmr->latest);
 
-		while (write(fd, data.elems, data.size) >= 0);
+		//while (write(fd, data.elems, data.size) >= 0);
 
-		(void) close(fd);
+		close(fd);
 		log_debug("%s", "Client socket closed");
 	}
 }
 
-
-static void
-cleanup(void *arg)
+static void cleanup(void *arg)
 {
 	wmr_server *srv = (wmr_server *)arg;
 
 	if (srv->fd >= 0) {
 		log_info("%s", "Closing server socket");
-		(void) close(srv->fd);
+		close(srv->fd);
 	}
 }
 
-
-static void *
-mainloop_pthread(void *x)
+static void *mainloop_pthread(void *x)
 {
 	wmr_server *srv = (wmr_server *)x;
 
@@ -87,86 +68,75 @@ mainloop_pthread(void *x)
 	return (NULL);
 }
 
-
 /*
  * public interface
  */
 
-
-void
-server_init(wmr_server *srv, struct wmr200 *wmr)
+void server_init(wmr_server *srv, struct wmr200 *wmr)
 {
 	srv->wmr = wmr;
 	srv->fd = srv->thread_id = -1;
 }
 
-
-int
-server_start(wmr_server *srv)
+int server_start(wmr_server *srv)
 {
-	struct addrinfo *head, *cur;
-	struct addrinfo hints; 
+	struct addrinfo *ai_head, *ai_cur;
+	struct addrinfo ai_hints; 
 	int port = DEFAULT_PORT;
 	char portstr[6];
 	int optval = 1;
 	int ret;
 
-	memset(&hints, 0, sizeof (hints));
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = AI_PASSIVE;
+	memset(&ai_hints, 0, sizeof(ai_hints));
+	ai_hints.ai_family = AF_UNSPEC;
+	ai_hints.ai_socktype = SOCK_STREAM;
+	ai_hints.ai_flags = AI_PASSIVE;
 
 	snprintf(portstr, sizeof(portstr), "%u", port);
 
-	if ((ret = getaddrinfo(NULL, portstr, &hints, &head)) != 0) {
+	if ((ret = getaddrinfo(NULL, portstr, &ai_hints, &ai_head)) != 0) {
 		log_error("getaddrinfo: %s\n", gai_strerror(ret));
-		return (-1);
+		return -1;
 	}
 
-	for (cur = head; cur != NULL; cur = cur->ai_next) {
-		srv->fd = socket(cur->ai_family,
-			cur->ai_socktype, cur->ai_protocol);
+	for (ai_cur = ai_head; ai_cur != NULL; ai_cur = ai_cur->ai_next) {
+		srv->fd = socket(ai_cur->ai_family, ai_cur->ai_socktype,
+			ai_cur->ai_protocol);
 
 		if (srv->fd == -1)
 			continue;
 
-		/* attempt to set SO_REUSEADDR, if it fails, proceed anyway */
-		(void) setsockopt(srv->fd, SOL_SOCKET, SO_REUSEADDR,
-			&optval, sizeof (optval));
-
-		/* break out if we're bound */
-		if (bind(srv->fd, cur->ai_addr, cur->ai_addrlen) == 0)
+		setsockopt(srv->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+		if (bind(srv->fd, ai_cur->ai_addr, ai_cur->ai_addrlen) == 0)
 			break;
 
-		(void) close(srv->fd);
+		close(srv->fd);
 	}
 
-	freeaddrinfo(head);
+	freeaddrinfo(ai_head);
 
-	/* if cur == NULL, we are not bound to any address  */
-	if (cur == NULL) {
-		log_error("%s", "Cannot setup server socket");
-		return (-1);
+	/* if ai_cur == NULL, we are not bound to any address  */
+	if (ai_cur == NULL) {
+		log_error("%s", "Cannot bind to any address");
+		return -1;
 	}
 
 	if (listen(srv->fd, SOMAXCONN) == -1) {
-		log_error("%s", "Cannot start listening");
-		return (-1);
+		log_error("listen: %s", "Cannot start listening");
+		return -1;
 	}
 
 	log_info("Server start sucessfull, descriptor is %d", srv->fd);
 
 	if (pthread_create(&srv->thread_id, NULL, mainloop_pthread, srv) != 0) {
 		log_error("%s", "Cannot start server main loop thread");
-		return (-1);
+		return -1;
 	}
 
-	return (0);
+	return 0;
 }
 
-
-void
-server_stop(wmr_server *srv)
+void server_stop(wmr_server *srv)
 {
 	pthread_cancel(srv->thread_id);
 	pthread_join(srv->thread_id, NULL);

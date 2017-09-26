@@ -10,7 +10,6 @@
 
 #include <pthread.h>
 
-#include "wmrdata.h"
 #include "wmr200.h"
 
 
