@@ -10,8 +10,6 @@
 #include "daemon.h"
 #include "log.h"
 #include "logger-rrd.h"
-#include "logger-server.h"
-#include "logger-yaml.h"
 #include "server.h"
 #include "wmr200.h"
 
@@ -128,7 +126,6 @@ connect:
 	pthread_sigmask(SIG_BLOCK, &set, &oldset);
 
 	assert(!running);
-	ev_alarm = false;
 
 	if ((wmr = wmr_open()) != NULL) {
 		wmr_set_error_handler(wmr, error_handler, NULL);
