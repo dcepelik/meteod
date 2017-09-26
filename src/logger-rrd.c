@@ -1,13 +1,8 @@
 /*
- * loggers/rrd.c:
- * Log readings to RRD files
+ * Log readings to round-robin database (RRD) files.
  *
- * This software may be freely used and distributed according to the terms
- * of the GNU GPL version 2 or 3. See LICENSE for more information.
- *
- * Copyright (c) 2015 David Čepelík <cepelik@gymlit.cz>
+ * Copyright (c) 2015-2017 David Čepelík <cepelik@gymlit.cz>
  */
-
 
 #include "common.h"
 #include "log.h"
@@ -18,9 +13,7 @@
 #include <rrd.h>
 #include <time.h>
 
-
-static void
-write_rrd(char *file_rel_path, char *rrd_root, strbuf *data)
+static void write_rrd(char *file_rel_path, char *rrd_root, strbuf *data)
 {
 	strbuf filename;
 	strbuf_init(&filename);
@@ -46,9 +39,7 @@ write_rrd(char *file_rel_path, char *rrd_root, strbuf *data)
 	strbuf_free(&filename);
 }
 
-
-static void
-log_wind(wmr_wind *wind, char *rrd_root)
+static void log_wind(wmr_wind *wind, char *rrd_root)
 {
 	strbuf data;
 	strbuf_init(&data);
@@ -62,9 +53,7 @@ log_wind(wmr_wind *wind, char *rrd_root)
 	strbuf_free(&data);
 }
 
-
-static void
-log_rain(wmr_rain *rain, char *rrd_root)
+static void log_rain(wmr_rain *rain, char *rrd_root)
 {
 	strbuf data;
 	strbuf_init(&data);
@@ -78,9 +67,7 @@ log_rain(wmr_rain *rain, char *rrd_root)
 	strbuf_free(&data);
 }
 
-
-static void
-log_uvi(wmr_uvi *uvi, char *rrd_root)
+static void log_uvi(wmr_uvi *uvi, char *rrd_root)
 {
 	strbuf data;
 	strbuf_init(&data);
@@ -93,9 +80,7 @@ log_uvi(wmr_uvi *uvi, char *rrd_root)
 	strbuf_free(&data);
 }
 
-
-static void
-log_baro(wmr_baro *baro, char *rrd_root)
+static void log_baro(wmr_baro *baro, char *rrd_root)
 {
 	strbuf data;
 	strbuf_init(&data);
@@ -109,9 +94,7 @@ log_baro(wmr_baro *baro, char *rrd_root)
 	strbuf_free(&data);
 }
 
-
-static void
-log_temp(wmr_temp *temp, char *rrd_root)
+static void log_temp(wmr_temp *temp, char *rrd_root)
 {
 	strbuf data;
 	strbuf_init(&data);
@@ -132,27 +115,21 @@ log_temp(wmr_temp *temp, char *rrd_root)
 	strbuf_free(&filename);
 }
 
-
-static void
-log_reading(wmr_reading *reading, char *rrd_root)
+static void log_reading(wmr_reading *reading, char *rrd_root)
 {
 	switch (reading->type) {
 	case WMR_WIND:
 		log_wind(&reading->wind, rrd_root);
 		break;
-
 	case WMR_RAIN:
 		log_rain(&reading->rain, rrd_root);
 		break;
-
 	case WMR_UVI:
 		log_uvi(&reading->uvi, rrd_root);
 		break;
-
 	case WMR_BARO:
 		log_baro(&reading->baro, rrd_root);
 		break;
-
 	case WMR_TEMP:
 		log_temp(&reading->temp, rrd_root);
 		break;

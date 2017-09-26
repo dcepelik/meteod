@@ -1,11 +1,10 @@
 /*
- * wmrd.c:
- * WMR logging daemon
+ * Weather logging daemon
  *
- * This software may be freely used and distributed according to the terms
- * of the GNU GPL version 2 or 3. See LICENSE for more information.
+ * This free software is distributed under the terms
+ * of the MIT license. See LICENSE for more information.
  *
- * Copyright (c) 2015 David Čepelík <cepelik@gymlit.cz>
+ * Copyright (c) 2015-2017 David Čepelík <d@dcepelik.cz>
  */
 
 #include "daemon.h"
@@ -21,6 +20,7 @@
 #include <getopt.h>
 #include <libgen.h>
 #include <pthread.h>
+#include <semaphore.h>
 #include <signal.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -28,27 +28,39 @@
 #include <string.h>
 #include <unistd.h>
 
-pthread_mutex_t mutex;
-pthread_cond_t error_or_signal;
-bool error;
-unsigned reconnect_interval_default = 3; /* s */
+#define RECONNECT_INTERVAL_MAX	120 /* seconds */
+
+/* TODO make these configurable */
 bool reconnect_on_error = true;
+unsigned reconnect_interval_default = 3; /* seconds */
+
 char *argv0;
+unsigned reconnect_interval;
+sem_t ev_sem;
 
-#define RECONNECT_INTERVAL_MAX	300
+volatile sig_atomic_t ev_error;	/* an error occured */
+volatile sig_atomic_t ev_alarm;	/* alarm has expired */
+volatile sig_atomic_t ev_quit;	/* quit request */
 
+/*
+ * Handle SIGINT, SIGINT and SIGALRM.
+ */
 static void signal_dispatch(int signum)
 {
 	switch (signum) {
 	case SIGINT:
 	case SIGTERM:
-		pthread_mutex_lock(&mutex);
-		pthread_cond_signal(&error_or_signal);
-		pthread_mutex_unlock(&mutex);
+		ev_quit = true;
 		break;
+	case SIGALRM:
+		ev_alarm = true;
+		break;
+	default:
+		return;
 	}
-}
 
+	sem_post(&ev_sem);
+}
 
 /*
  * Error handler. Called when a fatal error occurs while talking to
@@ -58,119 +70,116 @@ static void error_handler(struct wmr200 *wmr, void *arg)
 {
 	(void) arg;
 	(void) wmr;
-
-	pthread_mutex_lock(&mutex);
-	error = 1;
-	pthread_cond_signal(&error_or_signal);
-	pthread_mutex_unlock(&mutex);
+	fprintf(stderr, "error_handler\n");
+	if (!ev_error)
+		sem_post(&ev_sem);
+	ev_error = true;
 }
-
 
 static void usage(char *argv0)
 {
-	fprintf(stderr, "%s: usage: %s <options>\n", argv0, argv0);
-	fprintf(stderr,
-		"\t-c, --config FILE\tuse config file FILE\n"
-		"\t-S, --server\t\tuse logging server\n"
-		"\t-F, --file FILE\t\tlog readings to FILE\n"
-		"\t-R, --rrd DIR\t\tlog to RRDs in DIR\n"
-		"\n");
+	(void) argv0;
 }
 
+void schedule_reconnect(void)
+{
+	alarm(reconnect_interval);
+	log_info("Will attempt to reconnect in %lu seconds.", reconnect_interval);
+	reconnect_interval = MIN(2 * reconnect_interval, RECONNECT_INTERVAL_MAX);
+}
 
-int
-main(int argc, char *argv[])
+/*
+ * Daemon entry point.
+ */
+int main(int argc, char *argv[])
 {
 	(void) argc;
 	(void) argv;
 
-	sigset_t set;
-	sigset_t oldset;
 	struct wmr200 *wmr;
 	struct sigaction sa;
-	unsigned reconnect_interval = reconnect_interval_default;
+	sigset_t set;
+	sigset_t oldset;
+	bool running = false;
 
 	argv0 = basename(argv[0]);
-
-	log_open_syslog();
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = signal_dispatch;
 	sigaction(SIGTERM, &sa, NULL);
 	sigaction(SIGINT, &sa, NULL);
+	sigaction(SIGALRM, &sa, NULL);
 
+	log_open_syslog();
+	sem_init(&ev_sem, false, 0);
+
+	wmr_init();
+
+	reconnect_interval = reconnect_interval_default;
+
+connect:
 	/*
-	 * Block SIGINT/SIGTERM in spawned threads. This way we can be sure
-	 * that the main thread will receive the signal.
+	 * Block SIGINT/SIGTERM. Spawned threads will inherit blocked signals mask.
 	 */
 	sigemptyset(&set);
 	sigaddset(&set, SIGINT);
 	sigaddset(&set, SIGTERM);
+	sigaddset(&set, SIGALRM);
 	pthread_sigmask(SIG_BLOCK, &set, &oldset);
 
-	pthread_mutex_init(&mutex, NULL);
-	pthread_cond_init(&error_or_signal, NULL);
+	assert(!running);
+	ev_alarm = false;
 
-	wmr_init();
-
-connect:
-	pthread_mutex_lock(&mutex);
-
-	if (error) {
-		log_info("Waiting %u seconds before reconnecting.", reconnect_interval);
-		sleep(reconnect_interval);
-		/* TODO what if signal arrives here? */
-		reconnect_interval = MIN(2 * reconnect_interval, RECONNECT_INTERVAL_MAX);
+	if ((wmr = wmr_open()) != NULL) {
+		wmr_set_error_handler(wmr, error_handler, NULL);
+		if (wmr_start(wmr) == 0) {
+			running = true;
+			reconnect_interval = reconnect_interval_default;
+		}
+		else {
+			wmr_close(wmr);
+		}
 	}
 
-	if ((wmr = wmr_open()) == NULL) {
-		log_error("wmr_open: connection failed\n");
-		error = true;
-		pthread_mutex_unlock(&mutex);
-		goto quit;
+	if (!running) {
+		if (reconnect_on_error)
+			schedule_reconnect();
+		else
+			goto quit;
 	}
 
-	wmr_set_error_handler(wmr, error_handler, NULL);
-
-	if (wmr_start(wmr) != 0) {
-		log_error("wmr_start: cannot start communication with the station");
-		error = true;
-		goto disconnect;
-	}
-
-	error = false;
-	reconnect_interval = reconnect_interval_default;
-
-	//daemonize(argv0);
+	pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 
 	/*
-	 * Wait here until either an error occurs, or SIGINT/SIGTERM is received.
+	 * Wait here until either an alarm expires (which implies a reconnection
+	 * attempt should proceed), or a SIGINT/SIGTERM arrives, or an error occurs.
+	 *
+	 * Note that sem_wait may be interrupted by a signal, hence the loop.
 	 */
-	pthread_sigmask(SIG_SETMASK, &oldset, NULL);
-	pthread_cond_wait(&error_or_signal, &mutex);
-	pthread_mutex_unlock(&mutex);
+wait:
+	while (sem_wait(&ev_sem) != 0);
 
-	wmr_stop(wmr);
+	if (ev_alarm) {
+		ev_alarm = false;
+		goto connect;
+	}
 
-disconnect:
-	wmr_close(wmr);
+	if (running) {
+		wmr_stop(wmr);
+		wmr_close(wmr);
+		running = false;
+	}
+
+	if (!ev_quit && ev_error && reconnect_on_error) {
+		ev_error = false;
+		schedule_reconnect();
+		goto wait;
+	}
+
+	if (ev_quit)
+		log_info("Shutting down gracefully on SIGINT/SIGTERM");
 
 quit:
-	if (error) {
-		log_error("Connection was terminated because an error occured.");
-
-		if (reconnect_on_error)
-			goto connect;
-	}
-	else {
-		log_info("Terminating on SIGINT/SIGTERM.");
-	}
-
 	wmr_end();
-
-	pthread_mutex_destroy(&mutex);
-	pthread_cond_destroy(&error_or_signal);
-
-	return error ? EXIT_FAILURE : EXIT_SUCCESS;
+	return ev_error ? EXIT_FAILURE : EXIT_SUCCESS;
 }
-
