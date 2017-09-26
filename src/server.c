@@ -2,17 +2,13 @@
  * Make data available over TCP/IP.
  */
 
-#include "common.h"
 #include "log.h"
 #include "server.h"
-#include "strbuf.h"
 
 #include <err.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <pthread.h>
-#include <signal.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -22,25 +18,19 @@
 
 #define	DEFAULT_PORT		20892
 
-static void mainloop(wmr_server *srv)
+static void mainloop(struct wmr_server *srv)
 {
 	int fd;
 
 	log_info("%s", "Entering server main loop");
-	for (;;) {
+	while (1) {
 		/* POSIX.1: accept is a cancellation point */
 		if ((fd = accept(srv->fd, NULL, 0)) == -1)
-			err(1, "accept");
+			err(1, "accept"); /* TODO don't use err */
 
 		log_debug("Client accepted, fd = %u", fd);
 
-		//struct byte_array data;
-		//byte_array_init(&data);
-
-		/* TODO */
-		//serialize_data(&data, &srv->wmr->latest);
-
-		//while (write(fd, data.elems, data.size) >= 0);
+		/* TODO send data */
 
 		close(fd);
 		log_debug("%s", "Client socket closed");
@@ -49,7 +39,7 @@ static void mainloop(wmr_server *srv)
 
 static void cleanup(void *arg)
 {
-	wmr_server *srv = (wmr_server *)arg;
+	struct wmr_server *srv = (struct wmr_server *)arg;
 
 	if (srv->fd >= 0) {
 		log_info("%s", "Closing server socket");
@@ -59,7 +49,7 @@ static void cleanup(void *arg)
 
 static void *mainloop_pthread(void *x)
 {
-	wmr_server *srv = (wmr_server *)x;
+	struct wmr_server *srv = (struct wmr_server *)x;
 
 	pthread_cleanup_push(cleanup, srv);
 	mainloop(srv);
@@ -68,17 +58,13 @@ static void *mainloop_pthread(void *x)
 	return (NULL);
 }
 
-/*
- * public interface
- */
-
-void server_init(wmr_server *srv, struct wmr200 *wmr)
+void server_init(struct wmr_server *srv, struct wmr200 *wmr)
 {
 	srv->wmr = wmr;
 	srv->fd = srv->thread_id = -1;
 }
 
-int server_start(wmr_server *srv)
+int server_start(struct wmr_server *srv)
 {
 	struct addrinfo *ai_head, *ai_cur;
 	struct addrinfo ai_hints; 
@@ -136,7 +122,7 @@ int server_start(wmr_server *srv)
 	return 0;
 }
 
-void server_stop(wmr_server *srv)
+void server_stop(struct wmr_server *srv)
 {
 	pthread_cancel(srv->thread_id);
 	pthread_join(srv->thread_id, NULL);

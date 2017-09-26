@@ -13,17 +13,13 @@
 #include "wmr200.h"
 
 
-typedef struct {
+struct wmr_server {
+	struct wmr200 *wmr;	/* the device we serve data for */
 	int fd;			/* server socket descriptor */
-	struct wmr200 *wmr;		/* the device we serve data for */
 	pthread_t thread_id;	/* server thread ID */
-} wmr_server;
+};
 
 
-void server_init(wmr_server *srv, struct wmr200 *wmr);
-
-
-int server_start(wmr_server *srv);
-
-
-void server_stop(wmr_server *srv);
+void server_init(struct wmr_server *srv, struct wmr200 *wmr);
+int server_start(struct wmr_server *srv);
+void server_stop(struct wmr_server *srv);

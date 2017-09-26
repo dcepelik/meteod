@@ -35,14 +35,7 @@ typedef unsigned char		byte_t;
 typedef uint32_t		uint_t;
 typedef uint64_t		ulong_t;
 
-
-void *die(char *format, ...);
-
-
 void *malloc_safe(size_t size);
-
-
 void *realloc_safe(void *x, size_t size);
-
 
 #endif
