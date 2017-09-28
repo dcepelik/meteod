@@ -79,6 +79,12 @@ static void usage(char *argv0)
 	(void) argv0;
 }
 
+/*
+ * Schedule a reconnection attempt and increase the reconnection interval.
+ *
+ * NOTE: Upon successful connection, the reconnection interval will be reset
+ *       to default value. It will never exceed RECONNECT_INTERVAL_MAX.
+ */
 void schedule_reconnect(void)
 {
 	alarm(reconnect_interval);
@@ -87,7 +93,22 @@ void schedule_reconnect(void)
 }
 
 /*
- * Daemon entry point.
+ * Daemon entry point. This does several things.
+ *
+ * First of all, this is a simple event loop. It uses the semaphore ev_sem,
+ * on which it waits until an event of interest occurs. The events are:
+ *
+ *     - A SIGINT/SIGTERM signal is received. In that case, the daemon should
+ *       shut down gracefully, no matter what.
+ *
+ *     - error_handler is invoked by the wmr200 module (running in a different
+ *       thread), which means a fatal error has occurred, such as the station was
+ *       unplugged from the machine, an invalid packet was received, etc. In that
+ *       case, we want to terminate the communication. (And reconnect later
+ *       after some period of waiting.)
+ *
+ *     - A SIGALRM signal is received. In that case, we want to start connecting
+ *       again, because the reconnection delay has expired.
  */
 int main(int argc, char *argv[])
 {
@@ -99,6 +120,7 @@ int main(int argc, char *argv[])
 	sigset_t set;
 	sigset_t oldset;
 	bool running = false;
+	struct wmr_server srv;
 
 	argv0 = basename(argv[0]);
 
@@ -117,7 +139,8 @@ int main(int argc, char *argv[])
 
 connect:
 	/*
-	 * Block SIGINT/SIGTERM. Spawned threads will inherit blocked signals mask.
+	 * Block SIGINT, SIGTERM and SIGALRM. Spawned threads will inherit
+	 * the sigmask, so signals will be received by this "main" thread.
 	 */
 	sigemptyset(&set);
 	sigaddset(&set, SIGINT);
@@ -132,6 +155,9 @@ connect:
 		if (wmr_start(wmr) == 0) {
 			running = true;
 			reconnect_interval = reconnect_interval_default;
+
+			server_init(&srv, wmr);
+			server_start(&srv);
 		}
 		else {
 			wmr_close(wmr);
@@ -151,7 +177,7 @@ connect:
 	 * Wait here until either an alarm expires (which implies a reconnection
 	 * attempt should proceed), or a SIGINT/SIGTERM arrives, or an error occurs.
 	 *
-	 * Note that sem_wait may be interrupted by a signal, hence the loop.
+	 * NOTE: sem_wait may be interrupted by a signal, hence the loop.
 	 */
 wait:
 	while (sem_wait(&ev_sem) != 0);
@@ -161,12 +187,21 @@ wait:
 		goto connect;
 	}
 
+	/*
+	 * We're handling a quit request or an error has occurred. In any case,
+	 * if we're connected, we should disconnect now.
+	 */
 	if (running) {
 		wmr_stop(wmr);
 		wmr_close(wmr);
+		server_stop(&srv);
 		running = false;
 	}
 
+	/*
+	 * OK, so an error occurred. If no signal to quit was received, schedule
+	 * a reconnection attempt.
+	 */
 	if (!ev_quit && ev_error && reconnect_on_error) {
 		ev_error = false;
 		schedule_reconnect();

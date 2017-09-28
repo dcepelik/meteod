@@ -55,7 +55,7 @@
 
 /*
  * The following HIST_* constants are offsets into the HISTORIC_DATA
- * packets. Although offsets are generally hardcoded in the packet
+ * packets. Although offsets are generally hard-coded in the packet
  * processing logic, they are introduced as constants for HISTORIC_DATA
  * packets, as it makes the code easier to understand.
  */
@@ -88,11 +88,11 @@ struct wmr200
 	struct wmr_logger *logger;	/* linked list of loggers */
 	pthread_t mainloop_thread;	/* main loop thread */
 	pthread_t heartbeat_thread;	/* heartbeat loop thread */
-	struct wmr_latest_data latest;		/* latest readings */
-	struct wmr_meta meta;			/* system metadata packet (updated on the fly) */
+	struct wmr_latest_data latest;	/* latest readings */
+	struct wmr_meta meta;		/* system metadata packet (updated on the fly) */
 	time_t conn_since;		/* time the connection was established */
 
-	byte_t buf[FRAME_SIZE];	/* RX buffer */
+	byte_t buf[FRAME_SIZE];		/* RX buffer */
 	size_t buf_avail;		/* number of bytes available in the buffer */
 	size_t buf_pos;			/* read position within the buffer */
 
@@ -135,7 +135,7 @@ enum command
 	CMD_HEARTBEAT = 0xD0,		/* I'm alive, keep sending data */
 	CMD_REQUEST_HISTDATA = 0xDA,	/* send me next record from internal logger */
 	CMD_ERASE = 0xDB,		/* erase internal logger data */
-	CMD_STOP = 0xDF			/* terminate commmunication */
+	CMD_STOP = 0xDF			/* terminate communication */
 };
 
 /*
@@ -620,10 +620,10 @@ static void mainloop(struct wmr200 *wmr)
 			wmr->packet_len);
 
 		/*
-		 * If a packet exceeds maximum size, drop it.
+		 * If a packet is too big or too small, it is an error.
 		 */
-		if (wmr->packet_len > MAX_PACKET_LEN)
-			error(wmr, "Received oversize packet (len=%zu)", wmr->packet_len);
+		if (wmr->packet_len <= 2 || wmr->packet_len > MAX_PACKET_LEN)
+			error(wmr, "Unexpected packet length (len=%zu)", wmr->packet_len);
 
 		wmr->packet = malloc_safe(wmr->packet_len);
 		wmr->packet[0] = wmr->packet_type;
@@ -783,6 +783,11 @@ void wmr_set_error_handler(struct wmr200 *wmr, wmr_err_handler_t handler, void *
 {
 	wmr->err_handler = handler;
 	wmr->err_arg = arg;
+}
+
+void wmr_get_latest_data(struct wmr200 *wmr, struct wmr_latest_data *latest)
+{
+	*latest = wmr->latest;
 }
 
 const char *wmr_sensor_name(struct wmr_reading *reading)

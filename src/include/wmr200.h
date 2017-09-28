@@ -20,7 +20,6 @@ enum packet_type
 	PACKET_ERASE_ACK = 0xDB,	/* data erase successful (after CMD_ERASE) */
 	PACKET_HISTDATA_NOTIF = 0xD1,	/* historic data available notification */
 	PACKET_STOP_ACK = 0xDF,		/* communication will stop (after CMD_STOP) */
-
 	HISTORIC_DATA = 0xD2,
 	WMR_WIND = 0xD3,
 	WMR_RAIN = 0xD4,
@@ -29,12 +28,11 @@ enum packet_type
 	WMR_TEMP = 0xD7,
 	WMR_STATUS = 0xD9,
 	WMR_META = 0xFF,		/* system meta-packet */
-
 	PACKET_TYPE_MAX
 };
 
 /*
- * Convert packet type to string name.
+ * Packet type to string.
  */
 const char *packet_type_to_string(enum packet_type type);
 
@@ -92,28 +90,20 @@ struct wmr_temp
 
 /*
  * Status reading.
+ *
+ * For level strings, see level_string array in wmr200.c.
+ * For status strings, see status_strng array in wmr200.c.
  */
 struct wmr_status
 {
-	/*
-	 * Battery level strings (see `level_string' in `struct wmr200.c').
-	 */
 	const char *wind_bat;
 	const char *temp_bat;
 	const char *rain_bat;
 	const char *uv_bat;
-
-	/*
-	 * Sensor status strings (see `status_string' in `struct wmr200.c').
-	 */
 	const char *wind_sensor;
 	const char *temp_sensor;
 	const char *rain_sensor;
 	const char *uv_sensor;
-
-	/*
-	 * Real Time Clock (RTC) signal level (see `level_string' in `struct wmr200.c').
-	 */
 	const char *rtc_signal_level;
 };
 
@@ -122,13 +112,13 @@ struct wmr_status
  */
 struct wmr_meta
 {
-	uint_t num_packets;
-	uint_t num_failed;
-	uint_t num_frames;
-	float error_rate;
-	ulong_t num_bytes;
-	time_t latest_packet;
-	time_t uptime;
+	uint_t num_packets;	/* number of packets */
+	uint_t num_failed;	/* number of bad packets */
+	uint_t num_frames;	/* number of HID frames */
+	float error_rate;	/* error rate */
+	ulong_t num_bytes;	/* number of bytes */
+	time_t latest_packet;	/* time of latest packet delivered */
+	time_t uptime;		/* connection uptime */
 };
 
 /*
@@ -152,7 +142,7 @@ struct wmr_reading
 
 /*
  * For a given reading, return the name of the sensor where the reading
- * has originated.
+ * originated.
  */
 const char *wmr_sensor_name(struct wmr_reading *reading);
 
@@ -170,6 +160,8 @@ struct wmr_latest_data
 	struct wmr_reading status;
 	struct wmr_reading meta;
 };
+
+void wmr_get_latest_data(struct wmr200 *wmr, struct wmr_latest_data *latest);
 
 /*
  * Logger function prototype.
@@ -192,7 +184,7 @@ void wmr_init();
 void wmr_end();
 
 /*
- * Attempt to establish connection to a WMR200.
+ * Attempt to establish connection to a WMR200 device.
  *
  * Return value:
  *	If successful, returns a device handle.
