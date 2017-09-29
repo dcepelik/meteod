@@ -1,77 +1,31 @@
-/*
- * strbuf.h:
- * Growing string buffer
- *
- * This software may be freely used and distributed according to the terms
- * of the GNU GPL version 2 or 3. See LICENSE for more information.
- *
- * Copyright (c) 2015 David Čepelík <cepelik@gymlit.cz>
- */
-
-
 #ifndef STRBUF_H
-#define	STRBUF_H
+#define STRBUF_H
 
-#include "common.h"
 #include <stdarg.h>
+#include <stdbool.h>
+#include <stdlib.h>
 
+struct strbuf
+{
+	char *str;		/* the buffer itself */
+	size_t size;	/* current size of the buffer */
+	size_t len;		/* length of the string */
+};
 
+void strbuf_init(struct strbuf *buf, size_t init_size);
+void strbuf_free(struct strbuf *buf);
+void strbuf_reset(struct strbuf *buf);
+size_t strbuf_putc(struct strbuf *buf, char c);
+size_t strbuf_puts(struct strbuf *buf, char *str);
 
-#define	STRBUF_INIT_SIZE 1024
-#define	STRBUF_GROWTH_RATE 2
+void strbuf_prepare_write(struct strbuf *buf, size_t count);
 
+size_t strbuf_strlen(struct strbuf *buf);
+char *strbuf_get_string(struct strbuf *buf);
+char *strbuf_strcpy(struct strbuf *buf);
 
-typedef struct {
-	char *str;
-	size_t size;	/* excl. the '\0' */
-	size_t offset;	/* offset always points to the last written '\0' */
-} strbuf;
-
-
-/*
- * Initialize empty string buffer.
- */
-void strbuf_init(strbuf *buf);
-
-
-/*
- * Resize the buffer.
- */
-void strbuf_resize(strbuf *buf, size_t new_size);
-
-
-/*
- * Print at specific offset of the buffer.
- */
-void strbuf_printf(strbuf *buf, size_t offset, char *format, ...);
-
-
-/*
- * Print at specific offset of the buffer (va_list).
- */
-void strbuf_vprintf_at(strbuf *buf, size_t offset, char *format, va_list args);
-
-
-/*
- * Append string to the end of the buffer.
- */
-
-void strbuf_append(strbuf *buf, char *format, ...);
-
-
-/*
- * Copy the string and return pointer to the copy.
- */
-char *strbuf_copy(strbuf *buf);
-
-
-/*
- * Free all memory used by the buffer.
- */
-void strbuf_free(strbuf *buf);
-
-
-void strbuf_prepend(strbuf *buf, char *format, ...);
-
+size_t strbuf_printf(struct strbuf *buf, char *fmt, ...);
+size_t strbuf_vprintf(struct strbuf *buf, char *fmt, va_list args);
+size_t strbuf_vprintf_at(struct strbuf *buf, size_t offset, char *fmt, va_list args);
 
 #endif

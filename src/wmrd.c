@@ -9,7 +9,7 @@
 
 #include "daemon.h"
 #include "log.h"
-#include "logger-rrd.h"
+#include "rrd-logger.h"
 #include "server.h"
 #include "wmr200.h"
 
@@ -117,6 +117,7 @@ int main(int argc, char *argv[])
 
 	struct wmr200 *wmr;
 	struct sigaction sa;
+	struct rrd_logger rrd;
 	sigset_t set;
 	sigset_t oldset;
 	bool running = false;
@@ -155,6 +156,16 @@ connect:
 		if (wmr_start(wmr) == 0) {
 			running = true;
 			reconnect_interval = reconnect_interval_default;
+
+			rrd_logger_init(&rrd);
+			rrd.cfg.rrd_root = "/tmp";
+			rrd.cfg.wind_rrd = "wind.rrd";
+			rrd.cfg.rain_rrd = "rain.rrd";
+			rrd.cfg.uvi_rrd = "uvi.rrd";
+			rrd.cfg.baro_rrd = "baro.rrd";
+			rrd.cfg.temp_N_rrd = "temp%u.rrd";
+
+			wmr_register_logger(wmr, rrd_log_reading, &rrd);
 
 			server_init(&srv, wmr);
 			server_start(&srv);
@@ -195,6 +206,7 @@ wait:
 		wmr_stop(wmr);
 		wmr_close(wmr);
 		server_stop(&srv);
+		rrd_logger_free(&rrd);
 		running = false;
 	}
 

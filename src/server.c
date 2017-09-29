@@ -74,14 +74,14 @@ static void print_meta(struct wmr_meta *meta, int fd)
 
 	(void) meta;
 	dprintf(fd, "meta\tnpackets=%u\tnfailed=%u\tnframes=%u\terror_rate=%.1f\t"
-		"nbytes=%lu\tlatest_packet=%s\tuptime=%02lu:%02lu\n",
+		"nbytes=%lu\tlatest_packet=%s\tuptime=%02lu:%02lu:%02lu\n",
 		meta->num_packets,
 		meta->num_failed,
 		meta->num_frames,
 		meta->error_rate,
 		meta->num_bytes,
 		ctime(&meta->latest_packet),
-		meta->uptime / 60, meta->uptime % 60);
+		meta->uptime / 3600, (meta->uptime % 3600) / 60, meta->uptime % 60);
 }
 
 static void print_reading(struct wmr_reading *reading, int fd)
@@ -139,7 +139,7 @@ static void mainloop(struct wmr_server *srv)
 		print_reading(&latest.meta, fd);
 		print_reading(&latest.status, fd);
 
-		close(fd);
+		(void) close(fd);
 		log_debug("%s", "Client socket closed");
 	}
 }
@@ -148,7 +148,7 @@ static void cleanup(void *arg)
 {
 	struct wmr_server *srv = (struct wmr_server *)arg;
 	assert(srv->fd >= 0);
-	close(srv->fd);
+	(void) close(srv->fd);
 }
 
 static void *mainloop_pthread(void *arg)
@@ -200,7 +200,7 @@ int server_start(struct wmr_server *srv)
 		if (bind(srv->fd, ai_cur->ai_addr, ai_cur->ai_addrlen) == 0)
 			break;
 
-		close(srv->fd);
+		(void) close(srv->fd);
 	}
 
 	freeaddrinfo(ai_head);
