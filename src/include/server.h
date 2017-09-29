@@ -11,6 +11,7 @@ struct wmr_server
 	pthread_t thread_id;	/* server thread ID */
 };
 
-void server_init(struct wmr_server *srv, struct wmr200 *wmr);
+void server_init(struct wmr_server *srv);
+void server_set_device(struct wmr_server *srv, struct wmr200 *wmr);
 int server_start(struct wmr_server *srv);
 void server_stop(struct wmr_server *srv);

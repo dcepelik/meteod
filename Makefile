@@ -18,15 +18,8 @@ DEPS_DIR = $(BUILD_DIR)/deps
 DBG_DIR = $(BUILD_DIR)/dbg
 OPT_DIR = $(BUILD_DIR)/opt
 
-BINS = wmrd
-SRCS = common.c \
-	log.c \
-	wmr200.c \
-	strbuf.c \
-	server.c \
-	daemon.c \
-	wmrd.c \
-	logger-rrd.c
+BINS = meteod
+SRCS = common.c log.c daemon.c meteod.c rrd-logger.c server.c strbuf.c wmr200.c
 
 MAINS = $(patsubst %, %.c, $(BINS))
 

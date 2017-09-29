@@ -127,20 +127,20 @@ static void mainloop(struct wmr_server *srv)
 		if ((fd = accept(srv->fd, NULL, 0)) == -1)
 			err(1, "accept"); /* TODO don't use err */
 
-		log_debug("Client accepted, fd = %u", fd);
-		wmr_get_latest_data(srv->wmr, &latest);
+		if (srv->wmr != NULL) {
+			wmr_get_latest_data(srv->wmr, &latest);
 
-		print_reading(&latest.wind, fd);
-		print_reading(&latest.rain, fd);
-		print_reading(&latest.baro, fd);
-		print_reading(&latest.uvi, fd);
-		for (i = 0; i < WMR200_MAX_TEMP_SENSORS; i++)
-			print_reading(&latest.temp[i], fd);
-		print_reading(&latest.meta, fd);
-		print_reading(&latest.status, fd);
+			print_reading(&latest.wind, fd);
+			print_reading(&latest.rain, fd);
+			print_reading(&latest.baro, fd);
+			print_reading(&latest.uvi, fd);
+			for (i = 0; i < WMR200_MAX_TEMP_SENSORS; i++)
+				print_reading(&latest.temp[i], fd);
+			print_reading(&latest.meta, fd);
+			print_reading(&latest.status, fd);
+		}
 
 		(void) close(fd);
-		log_debug("%s", "Client socket closed");
 	}
 }
 
@@ -151,6 +151,9 @@ static void cleanup(void *arg)
 	(void) close(srv->fd);
 }
 
+/*
+ * Wrapper around mainloop to use with pthreads.
+ */
 static void *mainloop_pthread(void *arg)
 {
 	struct wmr_server *srv = (struct wmr_server *)arg;
@@ -162,10 +165,18 @@ static void *mainloop_pthread(void *arg)
 	return NULL;
 }
 
-void server_init(struct wmr_server *srv, struct wmr200 *wmr)
+void server_init(struct wmr_server *srv)
+{
+	srv->wmr = NULL;
+	srv->fd = srv->thread_id = -1;
+}
+
+/*
+ * Configure the @srv server to serve data for @wmr.
+ */
+void server_set_device(struct wmr_server *srv, struct wmr200 *wmr)
 {
 	srv->wmr = wmr;
-	srv->fd = srv->thread_id = -1;
 }
 
 int server_start(struct wmr_server *srv)

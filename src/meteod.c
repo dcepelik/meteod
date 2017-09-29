@@ -32,7 +32,7 @@
 bool reconnect_on_error = true;
 unsigned reconnect_interval_default = 3; /* seconds */
 
-char *argv0;
+char *prog;
 unsigned reconnect_interval;
 sem_t ev_sem;
 
@@ -54,7 +54,7 @@ static void signal_dispatch(int signum)
 		ev_alarm = true;
 		break;
 	default:
-		return;
+		return; /* to avoid sem_post */
 	}
 
 	sem_post(&ev_sem);
@@ -74,9 +74,9 @@ static void error_handler(struct wmr200 *wmr, void *arg)
 	ev_error = true;
 }
 
-static void usage(char *argv0)
+static void usage(int status)
 {
-	(void) argv0;
+	errx(status, "Usage: %s\n", prog);
 }
 
 /*
@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
 	bool running = false;
 	struct wmr_server srv;
 
-	argv0 = basename(argv[0]);
+	prog = basename(argv[0]);
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = signal_dispatch;
@@ -135,6 +135,9 @@ int main(int argc, char *argv[])
 	sem_init(&ev_sem, false, 0);
 
 	wmr_init();
+
+	server_init(&srv);
+	server_start(&srv); /* TODO check retval */
 
 	reconnect_interval = reconnect_interval_default;
 
@@ -166,9 +169,7 @@ connect:
 			rrd.cfg.temp_N_rrd = "temp%u.rrd";
 
 			wmr_register_logger(wmr, rrd_log_reading, &rrd);
-
-			server_init(&srv, wmr);
-			server_start(&srv);
+			server_set_device(&srv, wmr);
 		}
 		else {
 			wmr_close(wmr);
@@ -203,10 +204,9 @@ wait:
 	 * if we're connected, we should disconnect now.
 	 */
 	if (running) {
+		server_set_device(&srv, NULL);
 		wmr_stop(wmr);
 		wmr_close(wmr);
-		server_stop(&srv);
-		rrd_logger_free(&rrd);
 		running = false;
 	}
 
@@ -224,6 +224,9 @@ wait:
 		log_info("Shutting down gracefully on SIGINT/SIGTERM");
 
 quit:
+	server_stop(&srv);
+	rrd_logger_free(&rrd);
+
 	wmr_end();
 	return ev_error ? EXIT_FAILURE : EXIT_SUCCESS;
 }

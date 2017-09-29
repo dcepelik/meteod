@@ -22,9 +22,7 @@
 #include <errno.h>
 #include <string.h>
 
-
-static void
-detach_from_parent(void)
+static void detach_from_parent(void)
 {
 	pid_t pid1, pid2;
 	pid_t sid;
@@ -55,9 +53,7 @@ detach_from_parent(void)
 	log_info("Running as PID %d\n", pid2);
 }
 
-
-static void
-jail(void)
+static void jail(void)
 {
 	int ret;
 	char *chdir_dir = "/var/wmrd";
@@ -73,15 +69,13 @@ jail(void)
 			chdir_dir, strerror(errno));
 }
 
-
-static void
-drop_root_privileges(void)
+static void drop_root_privileges(void)
 {
 	gid_t group_id = 1006;
 	uid_t user_id = 1006;
 
 	if (setgid(group_id) == -1)
-		log_exit("Canot setgid to %d (%s), will exit\n",
+		log_exit("Cannot setgid to %d (%s), will exit\n",
 			group_id, strerror(errno));
 
 	if (setuid(user_id) == -1)
@@ -91,17 +85,10 @@ drop_root_privileges(void)
 	if (setuid(0) != -1)
 		log_exit("Root privileges not relinquished correctly");
 
-	log_info("Dropped root priviliges\n");
+	log_info("Dropped root privileges\n");
 }
 
-
-/*
- * public interface
- */
-
-
-void
-daemonize(const char *argv0)
+void daemonize(const char *argv0)
 {
 	(void) argv0;
 
