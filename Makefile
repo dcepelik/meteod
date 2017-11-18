@@ -19,7 +19,7 @@ DBG_DIR = $(BUILD_DIR)/dbg
 OPT_DIR = $(BUILD_DIR)/opt
 
 BINS = meteod
-SRCS = common.c log.c daemon.c meteod.c rrd-logger.c server.c strbuf.c wmr200.c
+SRCS = common.c log.c meteod.c rrd-logger.c server.c strbuf.c wmr200.c
 
 MAINS = $(patsubst %, %.c, $(BINS))
 

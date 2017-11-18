@@ -381,11 +381,6 @@ static void process_baro_data(struct wmr200 *wmr, byte_t *data)
 static void process_temp_data(struct wmr200 *wmr, byte_t *data)
 {
 	byte_t sensor_id = LOW(data[7]);
-
-	/* TODO */
-	if (sensor_id > 1)
-		error(wmr, "Unknown sensor (ID=%u)\n", sensor_id);
-
 	byte_t humidity = data[10];
 	byte_t heat_index = data[13];
 

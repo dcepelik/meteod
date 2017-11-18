@@ -7,7 +7,7 @@
  * Copyright (c) 2015-2017 David Čepelík <d@dcepelik.cz>
  */
 
-#include "daemon.h"
+#include "config.h"
 #include "log.h"
 #include "rrd-logger.h"
 #include "server.h"
@@ -15,22 +15,23 @@
 
 #include <assert.h>
 #include <err.h>
+#include <errno.h>
 #include <getopt.h>
+#include <grp.h>
 #include <libgen.h>
 #include <pthread.h>
+#include <pwd.h>
 #include <semaphore.h>
-#include <signal.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
-
-#define RECONNECT_INTERVAL_MAX	120 /* seconds */
 
 /* TODO make these configurable */
 bool reconnect_on_error = true;
-unsigned reconnect_interval_default = 3; /* seconds */
 
 char *prog;
 unsigned reconnect_interval;
@@ -83,13 +84,88 @@ static void usage(int status)
  * Schedule a reconnection attempt and increase the reconnection interval.
  *
  * NOTE: Upon successful connection, the reconnection interval will be reset
- *       to default value. It will never exceed RECONNECT_INTERVAL_MAX.
+ *       to default value. It will never exceed cfg.reconnect_max.
  */
 void schedule_reconnect(void)
 {
 	alarm(reconnect_interval);
 	log_info("Will attempt to reconnect in %lu seconds.", reconnect_interval);
-	reconnect_interval = MIN(2 * reconnect_interval, RECONNECT_INTERVAL_MAX);
+	reconnect_interval = MIN(2 * reconnect_interval, cfg.reconnect_max);
+}
+
+static void detach_from_parent(void)
+{
+	pid_t pid1, pid2;
+	pid_t sid;
+	
+	pid1 = fork();
+	if (pid1 < 0)
+		errx(EXIT_FAILURE, "Cannot fork");
+	else if (pid1 > 0)
+		exit(EXIT_SUCCESS);
+
+	fclose(stdin);
+	fclose(stdout);
+	fclose(stderr);
+
+	sid = setsid();
+	if (sid < 0)
+		log_exit("Could not create new session\n");
+
+	pid2 = fork();
+	if (pid2 < 0)
+		log_exit("Cannot fork for the second time\n");
+	else if (pid2 > 0)
+		exit(EXIT_SUCCESS);
+
+	if (setpgrp() == -1)
+		log_exit("Cannot set process group\n");
+}
+
+static void chdir_umask(void)
+{
+	int ret;
+
+	umask(cfg.umask);
+	if ((ret = chdir(cfg.chdir)) == -1)
+		log_exit("Cannot chdir_umask to %s: %s\n", cfg.chdir, strerror(errno));
+}
+
+static void resolve_names(void)
+{
+	struct passwd *pwd;
+	struct group *grp;
+
+	errno = 0;
+	if ((pwd = getpwnam(cfg.user)) == NULL) {
+		if (errno)
+			log_exit("getpwnam: %s", strerror(errno));
+		else
+			log_exit("getpwnam: User '%s' not found", cfg.user);
+	}
+	cfg.uid = pwd->pw_uid;
+
+	errno = 0;
+	if ((grp = getgrnam(cfg.group)) == NULL) {
+		if (errno)
+			log_exit("getgrnam: %s", strerror(errno));
+		else
+			log_exit("getgrnam: Group '%s' not found", cfg.group);
+	}
+	cfg.gid = grp->gr_gid;
+}
+
+static void drop_root_privileges(void)
+{
+	if (setgid(cfg.gid) == -1)
+		log_exit("setgid: %s\n", strerror(errno));
+	if (setuid(cfg.uid) == -1)
+		log_exit("setuid: %s\n", strerror(errno));
+
+	if (setuid(0) != -1)
+		log_exit("Root privileges not relinquished correctly");
+
+	log_info("Dropped root privileges\n");
 }
 
 /*
@@ -137,9 +213,15 @@ int main(int argc, char *argv[])
 	wmr_init();
 
 	server_init(&srv);
-	server_start(&srv); /* TODO check retval */
+	if (server_start(&srv) != 0)
+		errx(EXIT_FAILURE, "Cannot start the TCP/IP server, see the logs.");
 
-	reconnect_interval = reconnect_interval_default;
+	resolve_names();
+	detach_from_parent();
+	chdir_umask();
+	drop_root_privileges();
+
+	reconnect_interval = cfg.reconnect_default;
 
 connect:
 	/*
@@ -158,7 +240,7 @@ connect:
 		wmr_set_error_handler(wmr, error_handler, NULL);
 		if (wmr_start(wmr) == 0) {
 			running = true;
-			reconnect_interval = reconnect_interval_default;
+			reconnect_interval = cfg.reconnect_default;
 
 			rrd_logger_init(&rrd);
 			rrd.cfg.rrd_root = "/tmp";

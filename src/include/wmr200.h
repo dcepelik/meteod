@@ -13,6 +13,22 @@
 struct wmr200;
 
 /*
+ * How historic data should be treated.
+ */
+enum hist_mode
+{
+	HIST_MODE_ERASE,	/* erase the data */
+	HIST_MODE_IGNORE,	/* ignore the data */
+	HIST_MODE_RECEIVE,	/* receive the data */
+};
+
+struct wmr200_cfg
+{
+	enum hist_mode hist_mode;	/* historic data treatment */
+	unsigned heartbeat_interval;	/* heartbeat interval (seconds) */
+};
+
+/*
  * Type of a packet received from the station.
  */
 enum packet_type
